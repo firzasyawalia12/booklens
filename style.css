@@ -1,0 +1,279 @@
+/* Reset Dasar */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f8fafc;
+    color: #1f2937;
+}
+
+/* Container Utama Split Screen */
+.split-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* ==========================================================================
+   SISI KIRI: BACKGROUND & TEKS DI BAGIAN BAWAH
+   ========================================================================== */
+.left-side {
+    flex: 1.1;
+    min-height: 100vh; /* Pastikan ada tinggi agar gambar terlihat */
+    background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7)), 
+                url('assets/images/ui/bg-booklens.jpg') no-repeat; /* DI SINI: Hapus ../ karena style.css ada di luar */
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-end;
+    padding: 20px 30px;
+}
+
+/* ==========================================================================
+   DESAIN KOTAK QUOTE MELAYANG (GLASSMORPHISM)
+   ========================================================================== */
+.quote-box {
+    display: flex;
+    align-items: center;        /* Memastikan ikon dan teks sejajar vertikal */
+    gap: 16px;                  /* Jarak antara ikon buku dan teks quote */
+    width: 100%;
+    max-width: 680px;           /* Menjaga agar kotak memanjang kesamping sesuai figma */
+    
+    /* Efek Kaca Transparan (Glassmorphism) */
+    background: rgba(255, 255, 255, 0.06); 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    
+    /* Frame & Border Ringan */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;        /* Sudut membulat halus */
+    padding: 20px 24px;         /* Jarak aman teks ke dinding dalam kotak */
+    
+    /* Efek Bayangan Lembut di bawah kotak */
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Desain Ikon Buku Putih */
+.quote-icon {
+    width: 24px;       /* Atur lebar ikon sesuai kebutuhan di figma */
+    height: auto;      /* Tinggi otomatis mengikuti agar tetap proporsional */
+    object-fit: contain;
+    flex-shrink: 0;    /* Mencegah gambar menyusut/gepeng saat layar mengecil */
+}
+
+/* Pastikan induknya (.quote-box) tetap menggunakan flexbox */
+.quote-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 680px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.split-container .left-side .quote-box .quote-text {
+    font-family: 'Poppins', sans-serif !important; 
+    font-weight: 700 !important;                               
+    color: #ffffff !important;   
+    font-size: 12px;
+    line-height: 1.5;
+    letter-spacing: 0.2px;
+}
+
+/* ==========================================================================
+   SISI KANAN: AREA LUAR FORM CARD
+   ========================================================================== */
+.right-side {
+    flex: 0.9;
+    background-color: #f8fafc;   /* Latar abu-abu terang agar bayangan/shadow terlihat kontras */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+.form-wrapper {
+    width: 100%;
+    max-width: 420px;
+    background: #ffffff;         /* Isi dalam card tetap putih bersih */
+    padding: 40px;
+    border-radius: 16px;         /* Sudut kotak membulat halus */
+    
+    /* Efek Bayangan Lembut (Soft Shadow) */
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 
+                0 8px 10px -6px rgba(15, 23, 42, 0.1);
+}
+
+/* Judul Brand */
+.brand-title {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.brand-title h1 {
+    color: #1e293b;
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.brand-title p {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-top: 6px;
+}
+
+/* Desain Group Form Input */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #334155;
+}
+
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 16px;
+    color: #94a3b8;
+    font-size: 1rem;
+}
+
+.input-with-icon input {
+    width: 100%;
+    padding: 12px 16px 12px 46px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #334155;
+    background-color: #ffffff;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Efek pas kolom input diklik */
+.input-with-icon input:focus {
+    outline: none;
+    border-color: #0f172a;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Checkbox Terms & Conditions */
+.terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 24px;
+    margin-bottom: 24px;
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.terms-checkbox input {
+    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+}
+
+.terms-checkbox a {
+    color: #0f172a;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+/* Tombol Register Navy Sangat Gelap (Teks Sentral) */
+.btn-primary {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background-color: #0f172a;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #1e293b;
+}
+
+/* Notifikasi Pesan Validasi PHP */
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+.alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+.alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+
+
+/* ==========================================================================
+   BAGIAN FOOTER LINK HALAMAN (WAJIB DI LUAR MEDIA QUERY AGAR SELALU DI TENGAH)
+   ========================================================================== */
+.auth-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 24px;
+    width: 100%;
+}
+
+.auth-footer a {
+    color: #0f172a;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+
+/* ==========================================================================
+   MEDIA QUERY UNTUK LAYAR HP (BERSIH TANPA PENUMPUKAN KODE .auth-footer)
+   ========================================================================== */
+@media (max-width: 900px) {
+    .left-side {
+        display: none;
+    }
+    .right-side {
+        padding: 40px 20px;
+        background-color: #ffffff;
+    }
+    .form-wrapper {
+        box-shadow: none;
+        padding: 20px 10px;
+    }
+}
