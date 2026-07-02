@@ -20,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $pesan_error = "Username atau Email sudah terdaftar!";
         } else {
             $password_aman = password_hash($password, PASSWORD_BCRYPT);
-            $query_simpan = "INSERT INTO users (id_role, nama, username, email, password, foto )VALUES
+            $query_simpan = "INSERT INTO users (role, nama, username, email, password, foto )VALUES
             (2,'$nama','$username','$email','$password_aman',NULL)";
           
             if (mysqli_query($koneksi, $query_simpan)) {

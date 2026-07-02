@@ -30,16 +30,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $query = "
         SELECT
-            u.id_user,
-            u.nama,
-            u.username,
-            u.email,
-            u.password,
-            r.nama_role
-        FROM users u
-        INNER JOIN mst_role r
-            ON u.id_role = r.id_role
-        WHERE u.email = ?
+            id_user,
+            nama,
+            username,
+            email,
+            password,
+            role
+        FROM users
+        WHERE email = ?
         LIMIT 1
     ";
 
@@ -77,9 +75,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['id_user'] = $user_data['id_user'];
                 $_SESSION['nama'] = $user_data['nama'];
                 $_SESSION['username'] = $user_data['username'];
-                $_SESSION['role'] = $user_data['nama_role'];
+                $_SESSION['role'] = $user_data['role'];
 
-                if ($user_data['nama_role'] === 'admin') {
+                if ($user_data['role'] === 'admin') {
 
                     header("Location: admin/dashboard.php");
 
