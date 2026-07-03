@@ -30,14 +30,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $query = "
         SELECT
-            id_user,
-            nama,
-            username,
-            email,
-            password,
-            role
-        FROM users
-        WHERE email = ?
+            u.id_user,
+            u.nama,
+            u.username,
+            u.email,
+            u.password,
+            r.nama_role AS role
+        FROM users u
+        JOIN role r ON u.id_role = r.id_role
+        WHERE u.email = ?
         LIMIT 1
     ";
 
