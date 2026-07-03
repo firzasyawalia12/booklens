@@ -2,7 +2,7 @@
 session_start();
 include '../koneksi.php';
 
-// Proteksi halaman: hanya admin yang boleh membuka halaman kelola user.
+// Proteksi halaman: hanya admin yang boleh mengakses halaman kelola review.
 if (!isset($_SESSION['id_user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: ../login.php');
     exit();
@@ -13,18 +13,10 @@ function safeText($value) {
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
 
-// Mengecek nama tabel role karena beberapa versi database memakai "role" atau "mst_role".
+// Mengecek tabel opsional, dipakai agar halaman tetap jalan jika tabel ratings belum ada.
 function tableExists($koneksi, $table) {
     $table = mysqli_real_escape_string($koneksi, $table);
     $result = mysqli_query($koneksi, "SHOW TABLES LIKE '$table'");
-    return $result && mysqli_num_rows($result) > 0;
-}
-
-// Mengecek kolom opsional agar halaman tetap aman jika struktur database sedikit berbeda.
-function columnExists($koneksi, $table, $column) {
-    $table = mysqli_real_escape_string($koneksi, $table);
-    $column = mysqli_real_escape_string($koneksi, $column);
-    $result = mysqli_query($koneksi, "SHOW COLUMNS FROM `$table` LIKE '$column'");
     return $result && mysqli_num_rows($result) > 0;
 }
 
@@ -42,41 +34,56 @@ function bindParams($stmt, $types, $params) {
     return call_user_func_array([$stmt, 'bind_param'], $bind);
 }
 
-// Menentukan warna badge sesuai role user.
-function roleBadgeClass($role) {
-    return strtolower($role) === 'admin' ? 'role-admin' : 'role-user';
-}
-
-// Memberi variasi warna avatar pada tiap baris user.
+// Memberi variasi warna avatar pada tiap baris review.
 function avatarClass($index) {
     $classes = ['avatar-blue', 'avatar-green', 'avatar-purple', 'avatar-yellow'];
     return $classes[$index % count($classes)];
 }
 
-$roleTable = tableExists($koneksi, 'role') ? 'role' : 'mst_role';
-$hasCreatedAt = columnExists($koneksi, 'users', 'dibuat_pada');
-$createdSelect = $hasCreatedAt ? ', u.dibuat_pada' : '';
+// Mengambil path cover buku, dan memakai ikon default jika cover tidak ditemukan.
+function coverPath($cover) {
+    $cover = basename((string)$cover);
+    $path = __DIR__ . '/../assets/images/books/' . $cover;
 
-// Proses hapus user saat admin menekan tombol delete.
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
-    $deleteId = (int)$_GET['id'];
-
-    // Admin tidak boleh menghapus akun yang sedang dipakai untuk login.
-    if ($deleteId === (int)$_SESSION['id_user']) {
-        header('Location: users.php?error=self_delete');
-        exit();
+    if ($cover !== '' && is_file($path)) {
+        return '../assets/images/books/' . rawurlencode($cover);
     }
 
-    // Menghapus user berdasarkan id_user dengan prepared statement.
-    $deleteStmt = mysqli_prepare($koneksi, 'DELETE FROM users WHERE id_user = ?');
+    return '../assets/images/ui/boxicons_book.png';
+}
+
+// Membuat tampilan bintang rating dari angka 1 sampai 5.
+function renderStars($rating) {
+    $rating = max(0, min(5, (int)$rating));
+    $html = '';
+
+    for ($i = 1; $i <= 5; $i++) {
+        $html .= $i <= $rating
+            ? '<i class="bi bi-star-fill"></i>'
+            : '<i class="bi bi-star-fill empty-star"></i>';
+    }
+
+    return $html;
+}
+
+// Proses hapus review saat admin menekan tombol delete.
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    $deleteId = (int)$_GET['id'];
+    $deleteStmt = mysqli_prepare($koneksi, 'DELETE FROM reviews WHERE id_review = ?');
+
     if ($deleteStmt) {
         mysqli_stmt_bind_param($deleteStmt, 'i', $deleteId);
         mysqli_stmt_execute($deleteStmt);
     }
 
-    header('Location: users.php?status=deleted');
+    header('Location: reviews.php?status=deleted');
     exit();
 }
+
+// Jika tabel ratings ada, rating diambil dari sana. Jika tidak ada, rating ditampilkan 0.
+$hasRatingsTable = tableExists($koneksi, 'ratings');
+$ratingSelect = $hasRatingsTable ? ', rt.nilai_rating' : ', 0 AS nilai_rating';
+$ratingJoin = $hasRatingsTable ? 'LEFT JOIN ratings rt ON rv.id_user = rt.id_user AND rv.id_buku = rt.id_buku' : '';
 
 // Mengambil keyword pencarian dan halaman aktif dari URL.
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -88,18 +95,19 @@ $where = '';
 $types = '';
 $params = [];
 
-// Filter pencarian berdasarkan nama, username, email, atau role.
+// Filter pencarian berdasarkan buku, penulis, user, email, atau isi review.
 if ($search !== '') {
-    $where = "WHERE u.nama LIKE ? OR u.username LIKE ? OR u.email LIKE ? OR r.nama_role LIKE ?";
+    $where = "WHERE b.judul LIKE ? OR b.penulis LIKE ? OR u.nama LIKE ? OR u.email LIKE ? OR rv.isi_review LIKE ?";
     $like = "%$search%";
-    $params = [$like, $like, $like, $like];
-    $types = 'ssss';
+    $params = [$like, $like, $like, $like, $like];
+    $types = 'sssss';
 }
 
-// Menghitung total data untuk kebutuhan teks "Showing..." dan pagination.
+// Menghitung total review untuk kebutuhan teks "Showing..." dan pagination.
 $countSql = "SELECT COUNT(*) AS total
-             FROM users u
-             JOIN `$roleTable` r ON u.id_role = r.id_role
+             FROM reviews rv
+             JOIN books b ON rv.id_buku = b.id_buku
+             JOIN users u ON rv.id_user = u.id_user
              $where";
 $countStmt = mysqli_prepare($koneksi, $countSql);
 
@@ -119,12 +127,17 @@ if ($page > $totalPages) {
     $offset = ($page - 1) * $limit;
 }
 
-// Mengambil data user sesuai halaman dan keyword pencarian.
-$listSql = "SELECT u.id_user, u.nama, u.username, u.email, r.nama_role $createdSelect
-            FROM users u
-            JOIN `$roleTable` r ON u.id_role = r.id_role
+// Mengambil data review lengkap: buku, user, rating, isi review, dan tanggal.
+$listSql = "SELECT rv.id_review, rv.isi_review, rv.tanggal_review,
+                   b.judul, b.penulis, b.cover,
+                   u.nama, u.email
+                   $ratingSelect
+            FROM reviews rv
+            JOIN books b ON rv.id_buku = b.id_buku
+            JOIN users u ON rv.id_user = u.id_user
+            $ratingJoin
             $where
-            ORDER BY u.id_user ASC
+            ORDER BY rv.tanggal_review DESC, rv.id_review DESC
             LIMIT ? OFFSET ?";
 $listStmt = mysqli_prepare($koneksi, $listSql);
 
@@ -139,15 +152,15 @@ $listParams[] = $offset;
 
 bindParams($listStmt, $listTypes, $listParams);
 mysqli_stmt_execute($listStmt);
-$usersResult = mysqli_stmt_get_result($listStmt);
-$currentRows = $usersResult ? mysqli_num_rows($usersResult) : 0;
+$reviewsResult = mysqli_stmt_get_result($listStmt);
+$currentRows = $reviewsResult ? mysqli_num_rows($reviewsResult) : 0;
 
 $showingStart = $totalData > 0 ? $offset + 1 : 0;
 $showingEnd = $offset + $currentRows;
 
 // Membuat URL pagination tanpa menghilangkan keyword pencarian.
 function pageUrl($page, $search) {
-    return 'users.php?' . http_build_query([
+    return 'reviews.php?' . http_build_query([
         'page' => $page,
         'search' => $search
     ]);
@@ -158,7 +171,7 @@ function pageUrl($page, $search) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Users - BookLens Admin</title>
+    <title>Reviews - BookLens Admin</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -289,7 +302,7 @@ function pageUrl($page, $search) {
             overflow: hidden;
         }
 
-        .users-content {
+        .reviews-content {
             width: 100%;
             max-width: 1046px;
         }
@@ -366,14 +379,14 @@ function pageUrl($page, $search) {
             margin-bottom: 18px;
         }
 
-        .users-card {
+        .reviews-card {
             overflow: hidden;
             border: 1px solid #d8e0e8;
             border-radius: 7px;
             background: #ffffff;
         }
 
-        .users-toolbar {
+        .reviews-toolbar {
             min-height: 71px;
             padding: 16px 20px;
             border-bottom: 1px solid var(--line);
@@ -408,14 +421,14 @@ function pageUrl($page, $search) {
             padding: 0;
         }
 
-        .users-table {
+        .reviews-table {
             margin: 0;
-            min-width: 960px;
+            min-width: 1060px;
         }
 
-        .users-table thead th {
+        .reviews-table thead th {
             height: 49px;
-            padding: 0 24px;
+            padding: 0 22px;
             border-bottom: 1px solid var(--line);
             background: #ffffff;
             color: #303946;
@@ -424,21 +437,48 @@ function pageUrl($page, $search) {
             vertical-align: middle;
         }
 
-        .users-table tbody td {
-            height: 77px;
-            padding: 12px 24px;
+        .reviews-table tbody td {
+            height: 86px;
+            padding: 12px 22px;
             border-bottom: 1px solid var(--line);
             color: #465166;
-            font-size: 14px;
+            font-size: 13px;
             vertical-align: middle;
         }
 
-        .users-table tbody tr:last-child td {
+        .reviews-table tbody tr:last-child td {
             border-bottom: 0;
         }
 
-        .name-cell {
+        .book-cell,
+        .user-cell {
             gap: 14px;
+        }
+
+        .cover-img {
+            width: 30px;
+            height: 44px;
+            border: 1px solid #d8e1e8;
+            border-radius: 2px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .book-title,
+        .user-name {
+            margin-bottom: 3px;
+            color: var(--navy);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .book-author,
+        .user-email {
+            margin: 0;
+            color: #5b6575;
+            font-size: 12px;
+            line-height: 1.3;
         }
 
         .avatar-circle {
@@ -472,34 +512,25 @@ function pageUrl($page, $search) {
             color: #f4a408;
         }
 
-        .user-name {
-            color: var(--navy);
-            font-size: 13px;
-            font-weight: 700;
+        .rating-stars {
+            color: #f5b301;
+            font-size: 15px;
+            letter-spacing: 1px;
+            white-space: nowrap;
         }
 
-        .role-badge {
-            display: inline-flex;
-            align-items: center;
-            height: 25px;
-            padding: 0 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: capitalize;
+        .empty-star {
+            color: #cbd5e1;
         }
 
-        .role-admin {
-            background: #dbeafe;
-            color: #2563d9;
+        .review-text {
+            max-width: 230px;
+            margin: 0;
+            color: #313b4d;
+            line-height: 1.55;
         }
 
-        .role-user {
-            background: #dcefe7;
-            color: #16744d;
-        }
-
-        .delete-user-btn {
+        .delete-review-btn {
             width: 34px;
             height: 34px;
             border: 1px solid #ffd5d5;
@@ -512,15 +543,10 @@ function pageUrl($page, $search) {
             font-size: 15px;
         }
 
-        .delete-user-btn:hover {
+        .delete-review-btn:hover {
             background: #d10000;
             border-color: #d10000;
             color: #ffffff;
-        }
-
-        .delete-user-btn.disabled {
-            pointer-events: none;
-            opacity: .45;
         }
 
         .empty-data {
@@ -617,7 +643,7 @@ function pageUrl($page, $search) {
         }
 
         @media (max-width: 767.98px) {
-            .users-toolbar,
+            .reviews-toolbar,
             .table-footer,
             .main-footer {
                 flex-direction: column;
@@ -664,12 +690,12 @@ function pageUrl($page, $search) {
                         <span>Books</span>
                     </a>
 
-                    <a href="#" class="d-flex align-items-center">
+                    <a href="reviews.php" class="active d-flex align-items-center">
                         <img src="../assets/images/ui/icon-review.png" alt="Reviews" class="menu-icon">
                         <span>Reviews</span>
                     </a>
 
-                    <a href="users.php" class="active d-flex align-items-center">
+                    <a href="users.php" class="d-flex align-items-center">
                         <img src="../assets/images/ui/icon-user.png" alt="Users" class="menu-icon">
                         <span>Users</span>
                     </a>
@@ -682,9 +708,9 @@ function pageUrl($page, $search) {
             </aside>
 
             <main class="main-content flex-grow-1">
-                <div class="users-content">
+                <div class="reviews-content">
                     <!-- Search bar bagian atas halaman -->
-                    <form method="GET" action="users.php" class="top-bar d-flex align-items-center">
+                    <form method="GET" action="reviews.php" class="top-bar d-flex align-items-center">
                         <div class="input-group search-group flex-grow-1">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" name="search" class="form-control" placeholder="Search for books, authors, or users..." value="<?php echo safeText($search); ?>" aria-label="Search">
@@ -695,88 +721,91 @@ function pageUrl($page, $search) {
                         </div>
                     </form>
 
-                    <h1 class="page-title">Users</h1>
-                    <p class="page-subtitle">Manage all registered users in BookLens.</p>
+                    <h1 class="page-title">Reviews</h1>
+                    <p class="page-subtitle">Manage all book reviews in BookLens.</p>
 
-                    <!-- Pesan setelah user berhasil dihapus -->
+                    <!-- Pesan setelah review berhasil dihapus -->
                     <?php if (isset($_GET['status']) && $_GET['status'] === 'deleted'): ?>
                         <div class="alert alert-custom alert-dismissible fade show" role="alert">
-                            User berhasil dihapus.
+                            Review berhasil dihapus.
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     <?php endif; ?>
 
-                    <!-- Pesan jika admin mencoba menghapus akunnya sendiri -->
-                    <?php if (isset($_GET['error']) && $_GET['error'] === 'self_delete'): ?>
-                        <div class="alert alert-custom alert-dismissible fade show" role="alert">
-                            Akun admin yang sedang digunakan tidak bisa dihapus.
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    <?php endif; ?>
-
-                    <section class="users-card">
-                        <!-- Search khusus untuk tabel user -->
-                        <div class="users-toolbar d-flex align-items-center">
-                            <form method="GET" action="users.php" class="table-search">
-                                <input type="text" name="search" placeholder="Search user..." value="<?php echo safeText($search); ?>" aria-label="Search user">
+                    <section class="reviews-card">
+                        <!-- Search khusus untuk tabel review -->
+                        <div class="reviews-toolbar d-flex align-items-center">
+                            <form method="GET" action="reviews.php" class="table-search">
+                                <input type="text" name="search" placeholder="Search review..." value="<?php echo safeText($search); ?>" aria-label="Search review">
                                 <button type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
                             </form>
                         </div>
 
                         <div class="table-responsive">
-                            <!-- Tabel daftar user dan aksi hapus -->
-                            <table class="table users-table align-middle">
+                            <!-- Tabel daftar review dan aksi hapus -->
+                            <table class="table reviews-table align-middle">
                                 <thead>
                                     <tr>
-                                        <th style="width: 8%;">No</th>
-                                        <th style="width: 27%;">Name</th>
-                                        <th style="width: 29%;">Email</th>
-                                        <th style="width: 14%;">Role</th>
-                                        <th style="width: 14%;">Joined Date</th>
-                                        <th style="width: 8%;" class="text-center">Actions</th>
+                                        <th style="width: 7%;">No</th>
+                                        <th style="width: 21%;">Book</th>
+                                        <th style="width: 23%;">User</th>
+                                        <th style="width: 15%;">Rating</th>
+                                        <th style="width: 22%;">Review</th>
+                                        <th style="width: 12%;">Date</th>
+                                        <th style="width: 7%;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if ($usersResult && $currentRows > 0): ?>
+                                    <?php if ($reviewsResult && $currentRows > 0): ?>
                                         <?php $rowNumber = $offset + 1; ?>
                                         <?php $avatarIndex = 0; ?>
-                                        <?php while ($user = mysqli_fetch_assoc($usersResult)): ?>
+                                        <?php while ($review = mysqli_fetch_assoc($reviewsResult)): ?>
                                             <?php
-                                            $role = $user['nama_role'] ?? 'user';
-                                            $joinedDate = '-';
-
-                                            // Format tanggal daftar user jika kolom dibuat_pada tersedia.
-                                            if ($hasCreatedAt && !empty($user['dibuat_pada'])) {
-                                                $timestamp = strtotime($user['dibuat_pada']);
-                                                $joinedDate = $timestamp ? date('d M Y', $timestamp) : '-';
-                                            }
-
-                                            // Tombol hapus dinonaktifkan untuk akun admin yang sedang login.
-                                            $isCurrentUser = (int)$user['id_user'] === (int)$_SESSION['id_user'];
+                                            // Format tanggal review agar tampil seperti "30 Nov 2024".
+                                            $timestamp = !empty($review['tanggal_review']) ? strtotime($review['tanggal_review']) : false;
+                                            $reviewDate = $timestamp ? date('d M Y', $timestamp) : '-';
                                             ?>
                                             <tr>
                                                 <td><?php echo $rowNumber++; ?></td>
                                                 <td>
-                                                    <div class="name-cell d-flex align-items-center">
+                                                    <!-- Informasi buku yang direview -->
+                                                    <div class="book-cell d-flex align-items-center">
+                                                        <img src="<?php echo safeText(coverPath($review['cover'] ?? '')); ?>" alt="Book Cover" class="cover-img">
+                                                        <div>
+                                                            <h4 class="book-title"><?php echo safeText($review['judul']); ?></h4>
+                                                            <p class="book-author"><?php echo safeText($review['penulis']); ?></p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <!-- Informasi user yang menulis review -->
+                                                    <div class="user-cell d-flex align-items-center">
                                                         <span class="avatar-circle <?php echo avatarClass($avatarIndex++); ?>">
                                                             <i class="bi bi-person"></i>
                                                         </span>
-                                                        <span class="user-name"><?php echo safeText($user['nama']); ?></span>
+                                                        <div>
+                                                            <h4 class="user-name"><?php echo safeText($review['nama']); ?></h4>
+                                                            <p class="user-email"><?php echo safeText($review['email']); ?></p>
+                                                        </div>
                                                     </div>
                                                 </td>
-                                                <td><?php echo safeText($user['email']); ?></td>
                                                 <td>
-                                                    <span class="role-badge <?php echo roleBadgeClass($role); ?>">
-                                                        <?php echo safeText($role); ?>
+                                                    <!-- Rating ditampilkan sebagai lima bintang -->
+                                                    <span class="rating-stars">
+                                                        <?php echo renderStars($review['nilai_rating'] ?? 0); ?>
                                                     </span>
                                                 </td>
-                                                <td><?php echo safeText($joinedDate); ?></td>
+                                                <td>
+                                                    <p class="review-text"><?php echo safeText($review['isi_review']); ?></p>
+                                                </td>
+                                                <td><?php echo safeText($reviewDate); ?></td>
                                                 <td class="text-center">
+                                                    <!-- Tombol hapus review -->
                                                     <a
-                                                        href="users.php?action=delete&id=<?php echo (int)$user['id_user']; ?>"
-                                                        class="delete-user-btn <?php echo $isCurrentUser ? 'disabled' : ''; ?>"
-                                                        title="Delete User"
-                                                        onclick="return confirm('Yakin ingin menghapus user <?php echo safeText($user['nama']); ?>?')"
+                                                        href="reviews.php?action=delete&id=<?php echo (int)$review['id_review']; ?>"
+                                                        class="delete-review-btn"
+                                                        title="Delete Review"
+                                                        onclick="return confirm('Yakin ingin menghapus review ini?')"
                                                     >
                                                         <i class="bi bi-trash3"></i>
                                                     </a>
@@ -785,7 +814,7 @@ function pageUrl($page, $search) {
                                         <?php endwhile; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="6" class="empty-data">No registered user entries found.</td>
+                                            <td colspan="7" class="empty-data">No review entries found.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
