@@ -496,15 +496,6 @@ $jumlah_buku_terbaru = $buku_terbaru_result ? mysqli_num_rows($buku_terbaru_resu
             font-size: 16px;
         }
 
-        .action-link {
-            color: #3e454e;
-            font-size: 18px;
-        }
-
-        .action-link:hover {
-            color: var(--navy);
-        }
-
         .empty-data {
             height: 100px;
             color: #94a3b8 !important;
@@ -587,6 +578,15 @@ $jumlah_buku_terbaru = $buku_terbaru_result ? mysqli_num_rows($buku_terbaru_resu
             .footer-right {
                 flex-wrap: wrap;
             }
+        }
+
+        .dashboard-table th:nth-child(2),
+        .dashboard-table td:nth-child(2),
+        .dashboard-table th:nth-child(3),
+        .dashboard-table td:nth-child(3),
+        .dashboard-table th:nth-child(4),
+        .dashboard-table td:nth-child(4) {
+            padding-left: 40px;
         }
     </style>
 </head>
@@ -697,7 +697,6 @@ $jumlah_buku_terbaru = $buku_terbaru_result ? mysqli_num_rows($buku_terbaru_resu
                                         <th style="width: 22%;">Author</th>
                                         <th style="width: 16%;">Genre</th>
                                         <th style="width: 20%;">ISBN-13</th>
-                                        <th style="width: 9%;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -724,16 +723,11 @@ $jumlah_buku_terbaru = $buku_terbaru_result ? mysqli_num_rows($buku_terbaru_resu
                                                 <td><?php echo safeText($author); ?></td>
                                                 <td><span class="badge-genre"><?php echo safeText($genre); ?></span></td>
                                                 <td><span class="isbn-text"><?php echo safeText($isbn); ?></span></td>
-                                                <td class="text-center">
-                                                    <a href="edit_book.php?id=<?php echo (int)$book['id_buku']; ?>" class="action-link" title="Edit Book">
-                                                        <i class="bi bi-three-dots-vertical"></i>
-                                                    </a>
-                                                </td>
                                             </tr>
                                         <?php endwhile; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="5" class="empty-data">Belum ada data buku terbaru.</td>
+                                            <td colspan="4" class="empty-data">Belum ada data buku terbaru.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
