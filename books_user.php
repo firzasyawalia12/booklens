@@ -1,429 +1,338 @@
 <?php
-// Masukkan koneksi database kamu di sini
-// include 'koneksi.php';
+// 1. Memulai session untuk mendeteksi status login user
+session_start();
+
+// 2. Inisialisasi Koleksi Data Buku Berdasarkan Struktur Data Terbaru Kamu
+$books_collection = [
+    [
+        "id" => 1,
+        "title" => "Hujan",
+        "author" => "Tere Liye",
+        "cover" => "hujan.png",
+        "rating" => "5.0",
+        "genres" => ["Sci-Fi", "Romance"]
+    ],
+    [
+        "id" => 2,
+        "title" => "Di Tanah Lada",
+        "author" => "Ziggy Zezsyazeoviennazabrizkie",
+        "cover" => "ditanah.png",
+        "rating" => "5.0",
+        "genres" => ["Mystery", "Drama"]
+    ],
+    [
+        "id" => 3,
+        "title" => "Dilan 1990",
+        "author" => "Pidi Baiq",
+        "cover" => "dilan.png",
+        "rating" => "5.0",
+        "genres" => ["Romance", "Drama"]
+    ],
+    [
+        "id" => 4,
+        "title" => "Pukul Setengah Lima",
+        "author" => "Rintik Sedu",
+        "cover" => "pukul.png",
+        "rating" => "5.0",
+        "genres" => ["Romance", "Mystery"]
+    ],
+    [
+        "id" => 5,
+        "title" => "Dompet Ayah Sepatu Ibu",
+        "author" => "J.S. Khairen",
+        "cover" => "dompet.png",
+        "rating" => "5.0",
+        "genres" => ["Drama", "Family"]
+    ],
+    [
+        "id" => 6,
+        "title" => "A Gentle Reminder",
+        "author" => "Bianca Sparacino",
+        "cover" => "gentle.png",
+        "rating" => "5.0",
+        "genres" => ["Self Help", "Poetry"]
+    ]
+];
+
+// 3. Tangkap Parameter Filter dan Keyword Pencarian dari URL (HTTP GET)
+$search_query   = isset($_GET['search']) ? trim($_GET['search']) : '';
+$selected_genres = isset($_GET['genres']) ? $_GET['genres'] : [];
+$selected_rating = isset($_GET['rating']) ? $_GET['rating'] : 'all';
+
+// 4. Logika Proses Penyaringan Data Koleksi Buku
+$filtered_books = [];
+
+foreach ($books_collection as $item) {
+    // Kriteria A: Filter Keyword Pencarian
+    $match_search = false;
+    if ($search_query === '') {
+        $match_search = true;
+    } else {
+        if (stripos($item['title'], $search_query) !== false || stripos($item['author'], $search_query) !== false) {
+            $match_search = true;
+        }
+    }
+
+    // Kriteria B: Filter Multi-Genre
+    $match_genre = false;
+    if (empty($selected_genres)) {
+        $match_genre = true; 
+    } else {
+        foreach ($selected_genres as $genre_filter) {
+            foreach ($item['genres'] as $book_genre) {
+                if (strcasecmp($genre_filter, $book_genre) === 0 || stripos($book_genre, $genre_filter) !== false) {
+                    $match_genre = true;
+                    break 2;
+                }
+            }
+        }
+    }
+
+    // Kriteria C: Filter Rating
+    $match_rating = false;
+    $book_rating_float = (float)$item['rating'];
+    
+    if ($selected_rating === 'all') {
+        $match_rating = true;
+    } elseif ($selected_rating === '5' && $book_rating_float == 5.0) {
+        $match_rating = true;
+    } elseif ($selected_rating === '4' && $book_rating_float >= 4.0) {
+        $match_rating = true;
+    } elseif ($selected_rating === '3' && $book_rating_float >= 3.0) {
+        $match_rating = true;
+    }
+
+    if ($match_search && $match_genre && $match_rating) {
+        $filtered_books[] = $item;
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookLens - Explore Books</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
+    <title>Explore Books - BookLens</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./main.css">
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
+        #filterAndSearchForm {
+            width: 100%;
+            display: contents;
         }
-
-        /* --- NAVBAR STYLING --- */
-        .navbar {
-            background-color: #ffffff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            padding: 15px 0;
-        }
-        .navbar-brand {
-            font-weight: 700;
-            color: #0f172a;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .nav-link {
-            color: #475569;
-            font-weight: 500;
-            font-size: 0.95rem;
-            transition: color 0.2s;
-        }
-        .nav-link:hover, .nav-link.active {
-            color: #0f172a;
-        }
-        .search-container {
-            position: relative;
-            width: 300px;
-        }
-        .search-container input {
-            background-color: #f1f5f9;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 16px 8px 40px;
-            font-size: 0.9rem;
-        }
-        .search-container .bi-search {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #94a3b8;
-        }
-        .profile-avatar {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        /* --- SIDEBAR FILTER STYLING --- */
-        .filter-sidebar {
-            background-color: #eff6ff; /* Warna background biru muda khas figma */
-            border-radius: 12px;
-            padding: 24px;
-        }
-        .filter-title {
+        .no-data-msg {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
             font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .filter-section-label {
-            font-weight: 600;
-            font-size: 0.95rem;
-            margin-top: 20px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .form-check-label {
-            font-size: 0.9rem;
-            color: #334155;
-            cursor: pointer;
-        }
-        .form-check-input:checked {
-            background-color: #1e293b;
-            border-color: #1e293b;
         }
         .btn-reset {
-            background-color: #334155;
-            color: #ffffff;
-            border: none;
+            cursor: pointer;
             width: 100%;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-top: 25px;
-            transition: background-color 0.2s;
-        }
-        .btn-reset:hover {
-            background-color: #1e293b;
-            color: #ffffff;
+            display: block;
+            text-align: center;
         }
 
-        /* --- BOOK CARD STYLING --- */
-        .book-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .book-img-container {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 3 / 4;
-            background-color: #f1f5f9;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .book-img-container img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .rating-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #e2e8f0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .book-details {
-            padding: 16px;
-            background-color: #eff6ff; /* Sisi bawah kartu berwarna soft blue */
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .genre-badge-container {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-        .genre-badge {
-            background-color: #fef08a; /* Kuning figma */
-            color: #854d0e;
-            font-size: 0.75rem;
-            font-weight: 400 !important; /* Kunci: Tidak bold sesuai request sebelumnya */
-            padding: 3px 8px;
-            border-radius: 4px;
-        }
-        .book-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 2px;
-            line-height: 1.3;
-        }
-        .book-author {
-            font-size: 0.85rem;
-            color: #64748b;
-            margin-bottom: 15px;
-        }
-        .book-actions {
+        /* Layouting Tombol Sesuai Gambar Realistis */
+        .card-action-group {
             display: flex;
             gap: 8px;
-            margin-top: auto;
+            align-items: center;
+            margin-top: 12px;
+            width: 100%;
         }
-        .btn-detail {
-            background-color: #1e293b;
-            color: #ffffff;
-            border: none;
-            flex-grow: 1;
-            font-size: 0.85rem;
-            font-weight: 500;
-            padding: 6px;
-            border-radius: 4px;
+        
+        .card-action-group .btn-detail {
+            flex: 1;
+            margin-top: 0 !important;
         }
-        .btn-detail:hover {
-            background-color: #0f172a;
-            color: #ffffff;
-        }
-        .btn-wishlist {
+
+        .btn-card-wishlist {
             background-color: #ffffff;
+            color: #1e293b;
             border: 1px solid #cbd5e1;
-            color: #475569;
-            padding: 6px 10px;
-            border-radius: 4px;
+            padding: 0 12px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
         }
-        .btn-wishlist:hover {
-            background-color: #f1f5f9;
-        }
-
-        /* --- PAGINATION STYLING --- */
-        .pagination .page-link {
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            padding: 6px 12px;
-            font-size: 0.9rem;
-        }
-        .pagination .page-item.active .page-link {
-            background-color: #1e293b;
-            border-color: #1e293b;
-            color: #ffffff;
-        }
-
-        /* --- FOOTER STYLING --- */
-        footer {
-            background-color: #bfdbfe; /* Soft blue footer figma */
-            padding: 20px 0;
-            font-size: 0.85rem;
-            color: #475569;
-            margin-top: 80px;
+        .btn-card-wishlist:hover {
+            background-color: #f8fafc;
+            border-color: #94a3b8;
+            color: #0f172a;
         }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
-        <div class="container">
-            <a class="navbar-brand" href="home.php">
-                <i class="bi bi-book-half" style="font-size: 1.4rem;"></i> BookLens
-            </a>
-            <button class="navbar-collapse collapse navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-4 gap-3">
-                    <li class="nav-item"><a class="nav-link" href="home.php">Home</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="books_user.php">Books</a></li>
-                    <li class="nav-item"><a class="nav-link" href="wishlist.php">My wishlist</a></li>
-                    <li class="nav-item"><a class="nav-link" href="review.php">My Review</a></li>
-                </ul>
-                <div class="d-flex align-items-center gap-4">
-                    <div class="search-container">
-                        <i class="bi bi-search"></i>
-                        <input type="text" class="form-control" placeholder="Search for titles, author...">
-                    </div>
-                    <a href="profile.php">
-                        <img src="assets/images/ui/avatar.jpg" alt="Profile" class="profile-avatar" onerror="this.src='https://via.placeholder.com/150'">
-                    </a>
+<nav class="navbar">
+    <div class="logo-brand">
+        <a href="home.php" class="brand-link">
+            <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" class="nav-logo-img">
+            <span class="brand-text">BookLens</span>
+        </a>
+    </div>
+    <div class="nav-links">
+        <a href="home.php">Home</a>
+        <a href="books_user.php" class="active">Books</a>
+        <a href="wishlist.php">My wishlist</a>
+        <a href="reviews.php">My Review</a>
+    </div>
+    <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">
+        <a href="logout.php" class="profile-btn-link" title="Logout">
+            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #1e293b;">
+                <i class="fa-regular fa-user"></i>
+            </div>
+        </a>
+    </div>
+</nav>
+
+<form id="filterAndSearchForm" method="GET" action="books_user.php">
+    
+    <main class="container explore-section">
+        
+        <div class="explore-header">
+            <div class="header-text">
+                <h1>Explore Books</h1>
+                <p>Discover thousands of books from various genres and find your next favorite read.</p>
+            </div>
+            <div class="search-box-wrapper">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" name="search" placeholder="Search for titles, author..." class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" onkeyup="tungguKetikPencarian()">
+            </div>
+        </div>
+
+        <div class="explore-layout">
+            
+            <aside class="filter-sidebar">
+                <div class="filter-group">
+                    <h3><i class="fa-solid fa-layer-group"></i> Genre</h3>
+                    <?php 
+                    $all_genres = ["Fantasy", "Mystery", "Romance", "Horor", "Thriller", "Sci-Fi", "Self Help", "Business", "Drama"];
+                    foreach ($all_genres as $g_name): 
+                    ?>
+                    <label class="checkbox-container">
+                        <input type="checkbox" name="genres[]" value="<?php echo $g_name; ?>" <?php echo in_array($g_name, $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
+                        <span class="checkmark"></span><?php echo $g_name; ?>
+                    </label>
+                    <?php endforeach; ?>
                 </div>
-            </div>
-        </div>
-    </nav>
 
-    <main class="container my-5">
-        <div class="mb-4">
-            <h1 class="fw-bold" style="font-size: 2.2rem; color: #0f172a;">Explore Books</h1>
-            <p class="text-muted" style="font-size: 0.95rem;">Discover thousands of books from various genres and find your next favorite read.</p>
-        </div>
+                <div class="filter-group">
+                    <h3><i class="fa-solid fa-star"></i> Rating</h3>
+                    <label class="radio-container">
+                        <input type="radio" name="rating" value="all" <?php echo $selected_rating === 'all' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
+                        <span class="radiomark"></span>All Rating
+                    </label>
+                    <label class="radio-container">
+                        <input type="radio" name="rating" value="5" <?php echo $selected_rating === '5' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
+                        <span class="radiomark"></span>5 Star
+                    </label>
+                    <label class="radio-container">
+                        <input type="radio" name="rating" value="4" <?php echo $selected_rating === '4' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
+                        <span class="radiomark"></span>4+ Star
+                    </label>
+                    <label class="radio-container">
+                        <input type="radio" name="rating" value="3" <?php echo $selected_rating === '3' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
+                        <span class="radiomark"></span>3+ Star
+                    </label>
+                </div>
 
-        <div class="row g-4">
-            <div class="col-12 col-md-4 col-lg-3">
-                <form method="GET" action="books_user.php" class="filter-sidebar">
-                    <div class="filter-title">
-                        <i class="bi bi-sliders"></i> Genre
-                    </div>
-                    
-                    <div class="d-flex flex-column gap-2">
-                        <?php
-                        $genres = ['Fantasy', 'Mystery', 'Romance', 'Horor', 'Thriller', 'Sci-Fi', 'Self Help', 'Business'];
-                        foreach($genres as $g) {
-                            echo '
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="genre[]" value="'.$g.'" id="genre_'.$g.'">
-                                <label class="form-check-label" for="genre_'.$g.'">'.$g.'</label>
-                            </div>';
-                        }
-                        ?>
-                    </div>
+                <button type="button" class="btn-reset" onclick="window.location.href='books_user.php'">Reset</button>
+            </aside>
 
-                    <div class="filter-section-label">
-                        <i class="bi bi-star"></i> Rating
-                    </div>
-                    <div class="d-flex flex-column gap-2">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" value="all" id="rate_all" checked>
-                            <label class="form-check-label" for="rate_all">All Rating</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" value="5" id="rate_5">
-                            <label class="form-check-label" for="rate_5">5 Star</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" value="4" id="rate_4">
-                            <label class="form-check-label" for="rate_4">4+ Star</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" value="3" id="rate_3">
-                            <label class="form-check-label" for="rate_3">3+ Star</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="rating" value="2" id="rate_2">
-                            <label class="form-check-label" for="rate_2">2+ Star</label>
-                        </div>
-                    </div>
-
-                    <button type="reset" class="btn btn-reset">Reset</button>
-                </form>
-            </div>
-
-            <div class="col-12 col-md-8 col-lg-9">
-                <div class="row g-4">
-                    
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="book-card">
-                            <div class="book-img-container">
-                                <span class="rating-badge"><i class="bi bi-star-fill text-warning"></i> 5.0</span>
-                                <img src="assets/images/books/hujan.jpg" alt="Cover Buku" onerror="this.src='https://via.placeholder.com/150x200?text=Cover+Buku'">
+            <section class="books-display-area">
+                <div class="books-explore-grid">
+                
+                    <?php if (!empty($filtered_books)): ?>
+                        <?php foreach ($filtered_books as $item): ?>
+                        <div class="explore-book-card">
+                            <span class="badge-rating"><i class="fa-solid fa-star"></i> <?php echo $item['rating']; ?></span>
+                            <div class="explore-cover-box">
+                                 <img src="assets/images/books/<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>">
                             </div>
-                            <div class="book-details">
-                                <div class="genre-badge-container">
-                                    <span class="genre-badge">Sci-Fi</span>
-                                    <span class="genre-badge">Romance</span>
+                            <div class="explore-book-info">
+                                <div class="genres-tags">
+                                    <?php foreach ($item['genres'] as $g): ?>
+                                        <span class="tag"><?php echo $g; ?></span>
+                                    <?php endforeach; ?>
                                 </div>
-                                <h3 class="book-title">Hujan</h3>
-                                <div class="book-author">Tere Liye</div>
-                                <div class="book-actions">
-                                    <button class="btn-detail" onclick="location.href='detail.php?id=1'">Detail</button>
-                                    <button class="btn-wishlist"><i class="bi bi-bookmark"></i></button>
+                                <h4><?php echo $item['title']; ?></h4>
+                                <p class="author-name"><?php echo $item['author']; ?></p>
+                                
+                                <div class="card-action-group">
+                                    <!-- DIUBAH KE detail_books.php Sesuai image_e8ec52.png -->
+                                    <button type="button" class="btn-detail" onclick="window.location.href='detail_books.php?id=<?php echo $item['id']; ?>'">Detail</button>
+                                    
+                                    <button type="button" class="btn-card-wishlist" onclick="tambahKeWishlist(<?php echo $item['id']; ?>)" title="Add to Wishlist">
+                                        <i class="fa-regular fa-bookmark"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="book-card">
-                            <div class="book-img-container">
-                                <span class="rating-badge"><i class="bi bi-star-fill text-warning"></i> 5.0</span>
-                                <img src="assets/images/books/tanah_lada.jpg" alt="Cover Buku" onerror="this.src='https://via.placeholder.com/150x200?text=Cover+Buku'">
-                            </div>
-                            <div class="book-details">
-                                <div class="genre-badge-container">
-                                    <span class="genre-badge">Mystery</span>
-                                    <span class="genre-badge">Drama</span>
-                                </div>
-                                <h3 class="book-title">Di Tanah Lada</h3>
-                                <div class="book-author">Ziggy Zezsyazeoviennazabrizkie</div>
-                                <div class="book-actions">
-                                    <button class="btn-detail" onclick="location.href='detail.php?id=2'">Detail</button>
-                                    <button class="btn-wishlist"><i class="bi bi-bookmark"></i></button>
-                                </div>
-                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="no-data-msg">
+                            <p><i class="fa-regular fa-folder-open" style="font-size: 2rem; display:block; margin-bottom:10px;"></i> Maaf, tidak ada buku yang sesuai dengan kriteria filter atau pencarian Anda.</p>
                         </div>
-                    </div>
+                    <?php endif; ?>
 
-                    <div class="col-12 col-sm-6 col-lg-4">
-                        <div class="book-card">
-                            <div class="book-img-container">
-                                <span class="rating-badge"><i class="bi bi-star-fill text-warning"></i> 5.0</span>
-                                <img src="assets/images/books/dilan.jpg" alt="Cover Buku" onerror="this.src='https://via.placeholder.com/150x200?text=Cover+Buku'">
-                            </div>
-                            <div class="book-details">
-                                <div class="genre-badge-container">
-                                    <span class="genre-badge">Romance</span>
-                                    <span class="genre-badge">Drama</span>
-                                </div>
-                                <h3 class="book-title">Dilan 1990</h3>
-                                <div class="book-author">Pidi Baiq</div>
-                                <div class="book-actions">
-                                    <button class="btn-detail" onclick="location.href='detail.php?id=3'">Detail</button>
-                                    <button class="btn-wishlist"><i class="bi bi-bookmark"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                </div>
 
-                    </div>
+                <div class="pagination">
+                    <a href="#" class="page-arrow"><i class="fa-solid fa-chevron-left"></i></a>
+                    <a href="#" class="page-num active">1</a>
+                    <a href="#" class="page-num">2</a>
+                    <span class="page-dots">...</span>
+                    <a href="#" class="page-num">5</a>
+                    <a href="#" class="page-num"><i class="fa-solid fa-chevron-right"></i></a>
+                </div>
+            </section>
 
-                <nav class="d-flex justify-content-center mt-5">
-                    <ul class="pagination align-items-center gap-1">
-                        <li class="page-item"><a class="page-link border-0" href="#"><i class="bi bi-chevron-left"></i></a></li>
-                        <li class="page-item active"><a class="page-link rounded" href="#">1</a></li>
-                        <li class="page-item"><a class="page-link rounded" href="#">2</a></li>
-                        <li class="page-item disabled"><span class="page-link border-0">...</span></li>
-                        <li class="page-item"><a class="page-link rounded" href="#">5</a></li>
-                        <li class="page-item"><a class="page-link border-0" href="#"><i class="bi bi-chevron-right"></i></a></li>
-                    </ul>
-                </nav>
-            </div>
         </div>
     </main>
 
-    <footer>
-        <div class="container d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
-            <div>
-                <strong>BookLens</strong><br>
-                <span class="text-secondary" style="font-size: 0.8rem;">© 2026 BookLens. All rights reserved.</span>
-            </div>
-            <div class="d-flex gap-4">
-                <a href="#" class="text-decoration-none text-secondary">About</a>
-                <a href="#" class="text-decoration-none text-secondary">Contact</a>
-                <a href="#" class="text-decoration-none text-secondary">Privacy Policy</a>
-                <a href="#" class="text-decoration-none text-secondary">Terms</a>
-            </div>
-        </div>
-    </footer>
+</form>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<footer class="explore-footer">
+    <div class="container footer-content">
+        <div class="footer-left">
+            <strong>BookLens</strong>
+            <p>&copy; 2026 BookLens. All rights reserved.</p>
+        </div>
+        <div class="footer-right">
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+let timerPencarian;
+
+function jalankanSubmitForm() {
+    document.getElementById('filterAndSearchForm').submit();
+}
+
+function tungguKetikPencarian() {
+    clearTimeout(timerPencarian);
+    timerPencarian = setTimeout(function() {
+        jalankanSubmitForm();
+    }, 600);
+}
+
+function tambahKeWishlist(idBuku) {
+    alert("Sukses! Buku dengan ID " + idBuku + " dimasukkan ke Wishlist.");
+}
+</script>
+
 </body>
 </html>

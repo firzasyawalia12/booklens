@@ -96,7 +96,7 @@ if (!isset($_SESSION['username'])) {
     <div class="nav-links">
         <a href="home.php" class="active">Home</a>
 
-        <a href="books_user">Books</a>
+        <a href="books_user.php">Books</a>
         <a href="#">My wishlist</a>
         <a href="#">My Review</a>
     </div>
@@ -164,7 +164,7 @@ if (!isset($_SESSION['username'])) {
     <h2 class="section-title">Top Rated Books</h2>
     
     <div class="books-scroll-grid">
-        <div class="book-item-card" onclick="window.open('detail.php?id=1', '_blank')">
+        <div class="book-item-card" onclick="window.open('detail_books.php?id=1', '_blank')">
             <div class="book-cover-box">
                 <img src="assets/images/books/hujan.png" alt="Hujan" class="book-cover-img">
             </div>
@@ -175,7 +175,7 @@ if (!isset($_SESSION['username'])) {
             </div>
         </div>
 
-        <div class="book-item-card" onclick="window.open('detail.php?id=2', '_blank')">
+        <div class="book-item-card" onclick="window.open('detail_books.php?id=2', '_blank')">
             <div class="book-cover-box">
                 <img src="assets/images/books/ditanah.png" alt="Di Tanah Lada" class="book-cover-img">
             </div>
@@ -186,7 +186,7 @@ if (!isset($_SESSION['username'])) {
             </div>
         </div>
 
-        <div class="book-item-card" onclick="window.open('detail.php?id=3', '_blank')">
+        <div class="book-item-card" onclick="window.open('detail_books.php?id=3', '_blank')">
             <div class="book-cover-box">
                 <img src="assets/images/books/dilan.png" alt="Dilan 1990" class="book-cover-img">
             </div>
@@ -197,7 +197,7 @@ if (!isset($_SESSION['username'])) {
             </div>
         </div>
 
-        <div class="book-item-card" onclick="window.open('detail.php?id=4', '_blank')">
+        <div class="book-item-card" onclick="window.open('detail_books.php?id=4', '_blank')">
             <div class="book-cover-box">
                 <img src="assets/images/books/pukul.png" alt="Pukul Setengah Lima" class="book-cover-img">
             </div>
@@ -208,7 +208,7 @@ if (!isset($_SESSION['username'])) {
             </div>
         </div>
 
-        <div class="book-item-card" onclick="window.open('detail.php?id=5', '_blank')">
+        <div class="book-item-card" onclick="window.open('detail_books.php?id=5', '_blank')">
             <div class="book-cover-box">
                 <img src="assets/images/books/dompet.png" alt="Dompet Ayah Sepatu Ibu" class="book-cover-img">
             </div>
@@ -219,7 +219,7 @@ if (!isset($_SESSION['username'])) {
             </div>
         </div>
 
-        <div class="book-item-card" onclick="window.open('detail.php?id=6', '_blank')">
+        <div class="book-item-card" onclick="window.open('detail_books.php?id=6', '_blank')">
             <div class="book-cover-box">
                 <img src="assets/images/books/gentle.png" alt="A Gentle Reminder" class="book-cover-img">
             </div>
