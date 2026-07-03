@@ -1,323 +1,157 @@
 <?php
-// 1. Inisialisasi Koleksi Data Buku Berdasarkan Struktur Data Terbaru Kamu
-$books_collection = [
-    [
-        "id" => 1,
-        "title" => "Hujan",
-        "author" => "Tere Liye",
-        "cover" => "hujan.png",
-        "rating" => "5.0",
-        "genres" => ["Sci-Fi", "Romance"]
-    ],
-    [
-        "id" => 2,
-        "title" => "Di Tanah Lada",
-        "author" => "Ziggy Zezsyazeoviennazabrizkie",
-        "cover" => "ditanah.png",
-        "rating" => "5.0",
-        "genres" => ["Mystery", "Drama"]
-    ],
-    [
-        "id" => 3,
-        "title" => "Dilan 1990",
-        "author" => "Pidi Baiq",
-        "cover" => "dilan.png",
-        "rating" => "5.0",
-        "genres" => ["Romance", "Drama"]
-    ],
-    [
-        "id" => 4,
-        "title" => "Pukul Setengah Lima",
-        "author" => "Rintik Sedu",
-        "cover" => "pukul.png",
-        "rating" => "5.0",
-        "genres" => ["Romance", "Mystery"]
-    ],
-    [
-        "id" => 5,
-        "title" => "Dompet Ayah Sepatu Ibu",
-        "author" => "J.S. Khairen",
-        "cover" => "dompet.png",
-        "rating" => "5.0",
-        "genres" => ["Drama", "Family"]
-    ],
-    [
-        "id" => 6,
-        "title" => "A Gentle Reminder",
-        "author" => "Bianca Sparacino",
-        "cover" => "gentle.png",
-        "rating" => "5.0",
-        "genres" => ["Self Help", "Poetry"]
-    ]
-];
+session_start();
+include 'koneksi.php'; // Menghubungkan ke db_booklens
 
-// 2. Tangkap Parameter Filter dan Keyword Pencarian dari URL (HTTP GET)
-$search_query   = isset($_GET['search']) ? trim($_GET['search']) : '';
-$selected_genres = isset($_GET['genres']) ? $_GET['genres'] : [];
-$selected_rating = isset($_GET['rating']) ? $_GET['rating'] : 'all';
+// Proteksi login
+if (!isset($_SESSION['id_user'])) {
+    header("Location: login.php");
+    exit();
+}
 
-// 3. Logika Proses Penyaringan Data Koleksi Buku (Case-Insensitive untuk Search & Genre)
-$filtered_books = [];
+$id_user = $_SESSION['id_user'];
+// Mengambil ID buku dari URL parameter ?id=, default ke 1 jika kosong
+$id_buku = isset($_GET['id']) ? intval($_GET['id']) : 1;
 
-foreach ($books_collection as $item) {
-    // Kriteria A: Filter Keyword Pencarian (Judul atau Penulis)
-    $match_search = false;
-    if ($search_query === '') {
-        $match_search = true;
-    } else {
-        if (stripos($item['title'], $search_query) !== false || stripos($item['author'], $search_query) !== false) {
-            $match_search = true;
-        }
-    }
+// --- PROSES ACTION: ADD TO WISHLIST ---
+if (isset($_POST['action']) && $_POST['action'] == 'add_wishlist') {
+    $tanggal = date('Y-m-d');
+    $stmt_wish = mysqli_prepare($koneksi, "INSERT IGNORE INTO wishlist (id_user, id_buku, tanggal_ditambahkan) VALUES (?, ?, ?)");
+    mysqli_stmt_bind_param($stmt_wish, "iis", $id_user, $id_buku, $tanggal);
+    mysqli_stmt_execute($stmt_wish);
+    header("Location: detail_books.php?id=" . $id_buku . "&wishlist=success");
+    exit();
+}
 
-    // Kriteria B: Filter Multi-Genre dengan Normalisasi Case-Insensitive (strcasecmp / stripos)
-    $match_genre = false;
-    if (empty($selected_genres)) {
-        $match_genre = true; 
-    } else {
-        foreach ($selected_genres as $genre_filter) {
-            foreach ($item['genres'] as $book_genre) {
-                // Mencocokkan string secara case-insensitive agar aman meskipun ada perbedaan huruf kapital
-                if (strcasecmp($genre_filter, $book_genre) === 0 || stripos($book_genre, $genre_filter) !== false) {
-                    $match_genre = true;
-                    break 2; // Jika ketemu yang cocok, keluar dari kedua loop filter genre
-                }
-            }
-        }
-    }
-
-    // Kriteria C: Filter Batas Nilai Rating
-    $match_rating = false;
-    $book_rating_float = (float)$item['rating'];
-    
-    if ($selected_rating === 'all') {
-        $match_rating = true;
-    } elseif ($selected_rating === '5' && $book_rating_float == 5.0) {
-        $match_rating = true;
-    } elseif ($selected_rating === '4' && $book_rating_float >= 4.0) {
-        $match_rating = true;
-    } elseif ($selected_rating === '3' && $book_rating_float >= 3.0) {
-        $match_rating = true;
-    }
-
-    // Gabungkan seluruh kriteria: Buku harus lolos semua filter aktif
-    if ($match_search && $match_genre && $match_rating) {
-        $filtered_books[] = $item;
+// --- PROSES ACTION: SUBMIT REVIEW ---
+if (isset($_POST['action']) && $_POST['action'] == 'submit_review') {
+    $isi_review = trim($_POST['isi_review']);
+    if (!empty($isi_review)) {
+        $stmt_rev = mysqli_prepare($koneksi, "INSERT INTO reviews (id_user, id_buku, isi_review) VALUES (?, ?, ?)");
+        mysqli_stmt_bind_param($stmt_rev, "iis", $id_user, $id_buku, $isi_review);
+        mysqli_stmt_execute($stmt_rev);
+        header("Location: detail_books.php?id=" . $id_buku . "&review=success");
+        exit();
     }
 }
+
+// --- AMBIL DATA BUKU DARI DATABASE ---
+$query_buku = "SELECT * FROM books WHERE id_buku = ?";
+$stmt = mysqli_prepare($koneksi, $query_buku);
+mysqli_stmt_bind_param($stmt, "i", $id_buku);
+mysqli_stmt_execute($stmt);
+$result_buku = mysqli_stmt_get_result($stmt);
+$buku = mysqli_fetch_assoc($result_buku);
+
+if (!$buku) {
+    die("Buku tidak ditemukan di database.");
+}
+
+// --- AMBIL COUNT REVIEWS ---
+$query_count = "SELECT COUNT(*) as total FROM reviews WHERE id_buku = ?";
+$stmt_c = mysqli_prepare($koneksi, $query_count);
+mysqli_stmt_bind_param($stmt_c, "i", $id_buku);
+mysqli_stmt_execute($stmt_c);
+$res_c = mysqli_stmt_get_result($stmt_c);
+$count_data = mysqli_fetch_assoc($res_c);
+$total_reviews = $count_data['total'];
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Explore Books - BookLens</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./main.css">
-    <style>
-        /* Memastikan elemen form bertindak sebagai wrapper transparan tanpa merusak layout CSS kamu */
-        #filterAndSearchForm {
-            width: 100%;
-            display: contents;
-        }
-        /* Style untuk penanganan card ketika data pencarian/filter kosong */
-        .no-data-msg {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 60px 20px;
-            color: #64748b;
-            font-size: 1.1rem;
-        }
-        .btn-reset {
-            cursor: pointer;
-            width: 100%;
-            display: block;
-            text-align: center;
-        }
-    </style>
+    <title><?= htmlspecialchars($buku['judul']) ?> - BookLens</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="main.css">
 </head>
 <body>
-
 <nav class="navbar">
     <div class="logo-brand">
-        <a href="index.php" class="brand-link">
-            <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" class="nav-logo-img">
+        <a href="home.php" class="brand-link">
+            <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo">
             <span class="brand-text">BookLens</span>
         </a>
     </div>
-
     <div class="nav-links">
-        <a href="index.php">Home</a>
-        <a href="books.php" class="active">Books</a>
-    </div>
-
-    <div class="nav-auth-buttons">
-        <a href="login.php" class="btn-login">Login</a>
-        <a href="register.php" class="btn-register">Register</a>
+        <a href="home.php">Home</a>
+        <a href="books_user.php" class="active">Books</a>
+        <a href="wishlist.php">My Wishlist</a>
     </div>
 </nav>
 
-<form id="filterAndSearchForm" method="GET" action="books.php">
-    
-    <main class="container explore-section">
+<main class="container detail-container">
+    <div class="back-nav">
+        <a href="books_user.php" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Back to Catalog</a>
+    </div>
+
+    <div class="book-detail-main">
+        <div class="detail-left-cover">
+            <img src="assets/images/books/<?= htmlspecialchars($buku['cover_image']) ?>" alt="Cover" class="main-book-cover">
+        </div>
         
-        <div class="explore-header">
-            <div class="header-text">
-                <h1>Explore Books</h1>
-                <p>Discover thousands of books from various genres and find your next favorite read.</p>
-            </div>
+        <div class="detail-right-info">
+            <h1 class="book-title"><?= htmlspecialchars($buku['judul']) ?></h1>
+            <p class="book-author">By <?= htmlspecialchars($buku['penulis']) ?></p>
             
-            <div class="search-box-wrapper">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" name="search" placeholder="Search for titles, author..." class="search-input" value="<?php echo htmlspecialchars($search_query); ?>" onkeyup="tungguKetikPencarian()">
+            <div class="rating-badge-container">
+                <span class="stars"><i class="fa-solid fa-star"></i> <?= htmlspecialchars($buku['rating']) ?></span>
+                <span class="reviews-count">(<?= $total_reviews ?> Reviews)</span>
             </div>
-        </div>
 
-        <div class="explore-layout">
-            
-            <aside class="filter-sidebar">
-                <div class="filter-group">
-                    <h3><i class="fa-solid fa-layer-group"></i> Genre</h3>
-                    
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Fantasy" <?php echo in_array('Fantasy', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Fantasy
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Mystery" <?php echo in_array('Mystery', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Mystery
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Romance" <?php echo in_array('Romance', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Romance
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Horor" <?php echo in_array('Horor', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Horor
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Thriller" <?php echo in_array('Thriller', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Thriller
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Sci-Fi" <?php echo in_array('Sci-Fi', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Sci-Fi
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Self Help" <?php echo in_array('Self Help', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Self Help
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Business" <?php echo in_array('Business', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Business
-                    </label>
-                    <label class="checkbox-container">
-                        <input type="checkbox" name="genres[]" value="Drama" <?php echo in_array('Drama', $selected_genres) ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="checkmark"></span>Drama
-                    </label>
-                </div>
+            <div class="action-buttons-group" style="margin: 20px 0; display:flex; gap:10px;">
+                <form method="POST" action="">
+                    <input type="hidden" name="action" value="add_wishlist">
+                    <button type="submit" class="btn btn-wishlist"><i class="fa-solid fa-bookmark"></i> Add to Wishlist</button>
+                </form>
+            </div>
 
-                <div class="filter-group">
-                    <h3><i class="fa-solid fa-star"></i> Rating</h3>
-                    
-                    <label class="radio-container">
-                        <input type="radio" name="rating" value="all" <?php echo $selected_rating === 'all' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="radiomark"></span>All Rating
-                    </label>
-                    <label class="radio-container">
-                        <input type="radio" name="rating" value="5" <?php echo $selected_rating === '5' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="radiomark"></span>5 Star
-                    </label>
-                    <label class="radio-container">
-                        <input type="radio" name="rating" value="4" <?php echo $selected_rating === '4' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="radiomark"></span>4+ Star
-                    </label>
-                    <label class="radio-container">
-                        <input type="radio" name="rating" value="3" <?php echo $selected_rating === '3' ? 'checked' : ''; ?> onchange="jalankanSubmitForm()">
-                        <span class="radiomark"></span>3+ Star
-                    </label>
-                </div>
+            <div class="book-meta-spec">
+                <div class="spec-item"><strong>Publisher:</strong> <?= htmlspecialchars($buku['penerbit']) ?></div>
+                <div class="spec-item"><strong>Year:</strong> <?= htmlspecialchars($buku['tahun_terbit']) ?></div>
+                <div class="spec-item"><strong>ISBN:</strong> <?= htmlspecialchars($buku['isbn']) ?></div>
+                <div class="spec-item"><strong>Pages:</strong> <?= htmlspecialchars($buku['jumlah_halaman']) ?></div>
+            </div>
 
-                <button type="button" class="btn-reset" onclick="window.location.href='books.php'">Reset</button>
-            </aside>
-
-            <section class="books-display-area">
-                <div class="books-explore-grid">
-                
-                    <?php if (!empty($filtered_books)): ?>
-                        <?php foreach ($filtered_books as $item): ?>
-                        <div class="explore-book-card">
-                            <span class="badge-rating"><i class="fa-solid fa-star"></i> <?php echo $item['rating']; ?></span>
-                            <div class="explore-cover-box">
-                                 <img src="assets/images/books/<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>">
-                            </div>
-                            <div class="explore-book-info">
-                                <div class="genres-tags">
-                                    <?php foreach ($item['genres'] as $g): ?>
-                                        <span class="tag"><?php echo $g; ?></span>
-                                    <?php endforeach; ?>
-                                </div>
-                                <h4><?php echo $item['title']; ?></h4>
-                                <p class="author-name"><?php echo $item['author']; ?></p>
-                                
-                                <button type="button" class="btn-detail" onclick="window.open('detail.php?id=<?php echo $item['id']; ?>', '_blank')">Detail</button>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="no-data-msg">
-                            <p><i class="fa-regular fa-folder-open" style="font-size: 2rem; display:block; margin-bottom:10px;"></i> Maaf, tidak ada buku yang sesuai dengan kriteria filter atau pencarian Anda.</p>
-                        </div>
-                    <?php endif; ?>
-
-                </div>
-
-                <div class="pagination">
-                    <a href="#" class="page-arrow"><i class="fa-solid fa-chevron-left"></i></a>
-                    <a href="#" class="page-num active">1</a>
-                    <a href="#" class="page-num">2</a>
-                    <span class="page-dots">...</span>
-                    <a href="#" class="page-num">5</a>
-                    <a href="#" class="page-num"><i class="fa-solid fa-chevron-right"></i></a>
-                </div>
-            </section>
-
-        </div>
-    </main>
-
-</form>
-
-<footer class="explore-footer">
-    <div class="container footer-content">
-        <div class="footer-left">
-            <strong>BookLens</strong>
-            <p>&copy; 2026 BookLens. All rights reserved.</p>
-        </div>
-        <div class="footer-right">
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms</a>
+            <div class="book-synopsis">
+                <h3>Synopsis</h3>
+                <p><?= nl2br(htmlspecialchars($buku['sinopsis'])) ?></p>
+            </div>
         </div>
     </div>
-</footer>
 
-<script>
-let timerPencarian;
+    <div class="reviews-section" style="margin-top: 40px;">
+        <h2>User Reviews</h2>
+        
+        <form method="POST" action="" style="margin-bottom: 30px;">
+            <input type="hidden" name="action" value="submit_review">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <textarea name="isi_review" placeholder="Write your thoughts about this book..." rows="4" required style="padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit;"></textarea>
+                <button type="submit" class="btn-submit" style="width: fit-content; padding: 8px 20px; background-color: #1a253c; color: white; border: none; border-radius: 6px; cursor: pointer;">Post Review</button>
+            </div>
+        </form>
 
-function jalankanSubmitForm() {
-    document.getElementById('filterAndSearchForm').submit();
-}
+        <div class="reviews-list">
+            <?php
+            $query_rev_list = "SELECT r.*, u.nama FROM reviews r JOIN users u ON r.id_user = u.id_user WHERE r.id_buku = ? ORDER BY r.tanggal_review DESC";
+            $stmt_rl = mysqli_prepare($koneksi, $query_rev_list);
+            mysqli_stmt_bind_param($stmt_rl, "i", $id_buku);
+            mysqli_stmt_execute($stmt_rl);
+            $res_rl = mysqli_stmt_get_result($stmt_rl);
 
-// Fungsi debounce agar sistem tidak memuat ulang halaman setiap kali tombol keyboard ditekan (menunggu ketikan jeda sejenak)
-function tungguKetikPencarian() {
-    clearTimeout(timerPencarian);
-    timerPencarian = setTimeout(function() {
-        jalankanSubmitForm();
-    }, 600); // Menunggu user berhenti mengetik selama 600ms, lalu jalankan submit otomatis
-}
-</script>
-
+            if (mysqli_num_rows($res_rl) == 0): ?>
+                <p style="color: #64748b; font-style: italic;">No reviews yet. Be the first to review!</p>
+            <?php else: 
+                while ($rev = mysqli_fetch_assoc($res_rl)): ?>
+                <div class="review-card" style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div class="review-header" style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                        <strong><?= htmlspecialchars($rev['nama']) ?></strong>
+                        <span style="font-size: 0.85rem; color: #94a3b8;"><?= $rev['tanggal_review'] ?></span>
+                    </div>
+                    <p style="margin: 0; color: #334155;"><?= nl2br(htmlspecialchars($rev['isi_review'])) ?></p>
+                </div>
+            <?php endwhile; endif; ?>
+        </div>
+    </div>
+</main>
 </body>
 </html>
