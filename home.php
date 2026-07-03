@@ -81,33 +81,32 @@ if (!isset($_SESSION['username'])) {
     </style>
 </head>
 <body>
-<nav class="navbar">
-    <div class="logo-brand">
-        <a href="home.php" class="brand-link">
-            <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" class="nav-logo-img">
-            <span class="brand-text">BookLens</span>
-        </a>
-    </div>
-
-    <div class="nav-links">
-        <a href="home.php" class="active">Home</a>
-        <a href="books_user.php">Books</a>
-        <a href="wishlist.php">My wishlist</a>
-        <a href="MyReview.php">My Review</a>
-    </div>
-
-    <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">
-        <div class="nav-search-wrapper" style="position: relative;">
-            <i class="fa-solid fa-magnifying-glass nav-search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
-            <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 200px;">
+<nav class="navbar navbar-expand-lg navbar-light bg-light d-flex justify-content-between align-items-center">
+        <div class="logo-brand ms-4">
+            <a href="home.php" style="text-decoration: none; color: #000000; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" style="width: 24px; height: 24px;" onerror="this.style.display='none'">
+                <span>BookLens</span>
+            </a>
         </div>
-        <a href="logout.php" class="profile-btn-link" title="Logout" style="color: #1e293b; font-size: 1.2rem;">
-            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-regular fa-user"></i>
+        <div class="nav-links" style="display: flex; gap: 28px;">
+            <a href="home.php" style="text-decoration: none; font-weight: 600;">Home</a>
+            <a href="books_user.php" class="nav-item-normal" style="text-decoration: none;">Books</a>
+            <a href="wishlist.php" class="nav-item-normal" style="text-decoration: none;">My wishlist</a>
+            <a href="reviews.php" class="nav-item-normal" style="text-decoration: none;">My Review</a>
+        </div>
+        <div class="nav-right-container me-4" style="display: flex; align-items: center; gap: 20px;">
+            <div class="nav-search-wrapper" style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+                <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 210px; background-color: #ffffff; font-family: 'Poppins', sans-serif;">
             </div>
-        </a>
+            
+            <<a href="profil_user.php" title="My Profile" style="text-decoration: none;">
+    <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #1e293b;">
+        <i class="fa-regular fa-user"></i>
     </div>
-</nav> 
+</a>
+        </div>
+    </nav>
 
     <!-- HERO SECTION -->
     <header class="hero-section">

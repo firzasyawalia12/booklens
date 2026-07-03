@@ -159,37 +159,57 @@ $total_wishlist = count($wishlist_items);
         .footer-wishlist { background-color: #ebf3f9; padding: 30px 40px; border-top: 1px solid #cbd5e1; margin-top: 60px; }
         .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; color: #64748b; font-size: 0.85rem; }
         .footer-links a { color: #64748b; text-decoration: none; margin-left: 16px; }
+
+        .explore-footer {
+            background-color: #cbd5e1;
+            padding: 25px 0;
+            font-size: 0.85rem;
+            color: #475569;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .explore-footer a {
+            color: #475569;
+            text-decoration: none;
+            margin-left: 20px;
+            transition: color 0.2s ease;
+        }
+        
+        .explore-footer a:hover {
+            color: #0f172a;
+        }
     </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="logo-brand">
-        <a href="home.php" class="brand-link">
-            <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" class="nav-logo-img">
-            <span class="brand-text">BookLens</span>
-        </a>
-    </div>
-
-    <div class="nav-links">
-        <a href="home.php">Home</a>
-        <a href="books_user.php">Books</a>
-        <a href="wishlist.php" class="active">My wishlist</a>
-        <a href="MyReview.php">My Review</a>
-    </div>
-
-    <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">
-        <div class="nav-search-wrapper" style="position: relative;">
-            <i class="fa-solid fa-magnifying-glass nav-search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
-            <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 200px;">
+<nav class="navbar navbar-expand-lg navbar-light bg-light d-flex justify-content-between align-items-center">
+        <div class="logo-brand ms-4">
+            <a href="home.php" style="text-decoration: none; color: #000000; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" style="width: 24px; height: 24px;" onerror="this.style.display='none'">
+                <span>BookLens</span>
+            </a>
         </div>
-        <a href="logout.php" class="profile-btn-link" title="Logout" style="color: #1e293b; font-size: 1.2rem;">
-            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-regular fa-user"></i>
+        <div class="nav-links" style="display: flex; gap: 28px;">
+            <a href="home.php" style="text-decoration: none; font-weight: 600;">Home</a>
+            <a href="books_user.php" class="nav-item-normal" style="text-decoration: none;">Books</a>
+            <a href="wishlist.php" class="nav-item-normal" style="text-decoration: none;">My wishlist</a>
+            <a href="reviews.php" class="nav-item-normal" style="text-decoration: none;">My Review</a>
+        </div>
+        <div class="nav-right-container me-4" style="display: flex; align-items: center; gap: 20px;">
+            <div class="nav-search-wrapper" style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+                <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 210px; background-color: #ffffff; font-family: 'Poppins', sans-serif;">
             </div>
-        </a>
+            
+            <<a href="profil_user.php" title="My Profile" style="text-decoration: none;">
+    <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #1e293b;">
+        <i class="fa-regular fa-user"></i>
     </div>
-</nav>
+</a>
+        </div>
+    </nav>
+
 
 <main class="wishlist-container">
     <div class="wishlist-header-box">
@@ -227,30 +247,30 @@ $total_wishlist = count($wishlist_items);
                 </div>
             </div>
             <?php endforeach; ?>
-        <?php else: ?>
+      <?php else: ?>
             <div style="grid-column: 1/-1; text-align: center; padding: 80px 20px; color: #64748b; background: white; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                <i class="fa-regular fa-heart" style="font-size: 3rem; margin-bottom: 15px; color: #94a3b8; display: block;"></i>
-                <p style="margin:0; font-size: 1.1rem; font-weight: 500;">Wishlist kamu masih kosong.</p>
-                <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: #94a3b8;">Cari buku favoritmu di halaman katalog dan klik tombol bookmark untuk menambahkan!</p>
+                <i class="fa-regular fa-heart" style="font-size: 3rem; margin-bottom: 20px; color: #94a3b8; display: block;"></i>
+                <p style="margin: 0 0 10px 0; font-size: 1.1rem; font-weight: 600; color: #0f172a;">Wishlist kamu masih kosong.</p>
+                <p style="margin: 0; font-size: 0.9rem; color: #64748b; max-width: 450px; margin-left: auto; margin-right: auto; line-height: 1.6;">Cari buku favoritmu di halaman katalog dan klik tombol bookmark untuk menambahkan!</p>
             </div>
         <?php endif; ?>
     </div>
 </main>
 
-<footer class="explore-footer">
-    <div class="container footer-content">
-        <div class="footer-left">
-            <strong>BookLens</strong>
-            <p>&copy; 2026 BookLens. All rights reserved.</p>
+   <footer class="explore-footer">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="footer-left">
+                <strong>BookLens</strong>
+                <p class="m-0" style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">&copy; 2026 BookLens. All rights reserved.</p>
+            </div>
+            <div class="footer-right">
+                <a href="#">About</a>
+                <a href="#">Contact</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms</a>
+            </div>
         </div>
-        <div class="footer-right">
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms</a>
-        </div>
-    </div>
-</footer>
+    </footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

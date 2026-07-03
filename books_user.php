@@ -211,37 +211,57 @@ foreach ($books_collection as $item) {
         .nav-links a { text-decoration: none; color: #475569; font-weight: 500; font-size: 0.95rem; }
         .nav-links a:hover { color: #0f172a; }
         .nav-links a.active { color: #0f172a; font-weight: 700; }
+
+         .explore-footer {
+            background-color: #cbd5e1;
+            padding: 25px 0;
+            font-size: 0.85rem;
+            color: #475569;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .explore-footer a {
+            color: #475569;
+            text-decoration: none;
+            margin-left: 20px;
+            transition: color 0.2s ease;
+        }
+        
+        .explore-footer a:hover {
+            color: #0f172a;
+        }
     </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="logo-brand">
-        <a href="home.php" class="brand-link">
-            <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" class="nav-logo-img">
-            <span class="brand-text">BookLens</span>
-        </a>
-    </div>
-
-    <div class="nav-links">
-        <a href="home.php">Home</a>
-        <a href="books_user.php" class="active">Books</a>
-        <a href="wishlist.php">My wishlist</a>
-        <a href="MyReview.php">My Review</a>
-    </div>
-
-    <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">
-        <div class="nav-search-wrapper" style="position: relative;">
-            <i class="fa-solid fa-magnifying-glass nav-search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
-            <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 200px;">
+<nav class="navbar navbar-expand-lg navbar-light bg-light d-flex justify-content-between align-items-center">
+        <div class="logo-brand ms-4">
+            <a href="home.php" style="text-decoration: none; color: #000000; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <img src="assets/images/ui/boxicons_book.png" alt="BookLens Logo" style="width: 24px; height: 24px;" onerror="this.style.display='none'">
+                <span>BookLens</span>
+            </a>
         </div>
-        <a href="logout.php" class="profile-btn-link" title="Logout" style="color: #1e293b; font-size: 1.2rem;">
-            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-regular fa-user"></i>
+        <div class="nav-links" style="display: flex; gap: 28px;">
+            <a href="home.php" style="text-decoration: none; font-weight: 600;">Home</a>
+            <a href="books_user.php" class="nav-item-normal" style="text-decoration: none;">Books</a>
+            <a href="wishlist.php" class="nav-item-normal" style="text-decoration: none;">My wishlist</a>
+            <a href="reviews.php" class="nav-item-normal" style="text-decoration: none;">My Review</a>
+        </div>
+        <div class="nav-right-container me-4" style="display: flex; align-items: center; gap: 20px;">
+            <div class="nav-search-wrapper" style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+                <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 210px; background-color: #ffffff; font-family: 'Poppins', sans-serif;">
             </div>
-        </a>
+            
+            <<a href="profil_user.php" title="My Profile" style="text-decoration: none;">
+    <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #1e293b;">
+        <i class="fa-regular fa-user"></i>
     </div>
-</nav>
+</a>
+        </div>
+    </nav>
+
 
 <form id="filterAndSearchForm" method="GET" action="books_user.php">
     
@@ -349,20 +369,20 @@ foreach ($books_collection as $item) {
 
 </form>
 
-<footer class="explore-footer">
-    <div class="container footer-content">
-        <div class="footer-left">
-            <strong>BookLens</strong>
-            <p>&copy; 2026 BookLens. All rights reserved.</p>
+   <footer class="explore-footer">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="footer-left">
+                <strong>BookLens</strong>
+                <p class="m-0" style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">&copy; 2026 BookLens. All rights reserved.</p>
+            </div>
+            <div class="footer-right">
+                <a href="#">About</a>
+                <a href="#">Contact</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms</a>
+            </div>
         </div>
-        <div class="footer-right">
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms</a>
-        </div>
-    </div>
-</footer>
+    </footer>
 
 <script>
 let timerPencarian;
