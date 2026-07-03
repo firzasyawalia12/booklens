@@ -2,23 +2,22 @@
 session_start();
 include '../koneksi.php';
 
-// Proteksi halaman: hanya admin yang boleh membuka halaman kelola buku.
+// Proteksi halaman: hanya admin yang boleh mengakses halaman kelola review.
 if (!isset($_SESSION['id_user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: ../login.php');
     exit();
 }
 
-// Mengecek kolom opsional agar halaman tetap aman pada struktur database yang berbeda.
-function columnExists($koneksi, $table, $column) {
-    $table = mysqli_real_escape_string($koneksi, $table);
-    $column = mysqli_real_escape_string($koneksi, $column);
-    $check = mysqli_query($koneksi, "SHOW COLUMNS FROM `$table` LIKE '$column'");
-    return $check && mysqli_num_rows($check) > 0;
+// Membersihkan teks sebelum ditampilkan agar aman dari karakter HTML berbahaya.
+function safeText($value) {
+    return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
 
-// Membersihkan teks sebelum ditampilkan ke halaman.
-function safeText($text) {
-    return htmlspecialchars($text ?? '', ENT_QUOTES, 'UTF-8');
+// Mengecek tabel opsional, dipakai agar halaman tetap jalan jika tabel ratings belum ada.
+function tableExists($koneksi, $table) {
+    $table = mysqli_real_escape_string($koneksi, $table);
+    $result = mysqli_query($koneksi, "SHOW TABLES LIKE '$table'");
+    return $result && mysqli_num_rows($result) > 0;
 }
 
 // Helper untuk bind parameter prepared statement secara dinamis.
@@ -35,90 +34,81 @@ function bindParams($stmt, $types, $params) {
     return call_user_func_array([$stmt, 'bind_param'], $bind);
 }
 
-// Mengambil path cover buku, atau cover default jika file tidak ada.
-function coverPath($cover) {
-    $cover = basename($cover ?? '');
+// Memberi variasi warna avatar pada tiap baris review.
+function avatarClass($index) {
+    $classes = ['avatar-blue', 'avatar-green', 'avatar-purple', 'avatar-yellow'];
+    return $classes[$index % count($classes)];
+}
 
-    if ($cover !== '' && file_exists(__DIR__ . '/../assets/images/books/' . $cover)) {
+// Mengambil path cover buku, dan memakai ikon default jika cover tidak ditemukan.
+function coverPath($cover) {
+    $cover = basename((string)$cover);
+    $path = __DIR__ . '/../assets/images/books/' . $cover;
+
+    if ($cover !== '' && is_file($path)) {
         return '../assets/images/books/' . rawurlencode($cover);
     }
 
     return '../assets/images/ui/boxicons_book.png';
 }
 
-// Membuat URL pagination tanpa menghilangkan filter dan keyword pencarian.
-function pageUrl($pageNum, $search, $genreFilter) {
-    return 'books.php?' . http_build_query([
-        'search' => $search,
-        'genre' => $genreFilter,
-        'page' => $pageNum
-    ]);
+// Membuat tampilan bintang rating dari angka 1 sampai 5.
+function renderStars($rating) {
+    $rating = max(0, min(5, (int)$rating));
+    $html = '';
+
+    for ($i = 1; $i <= 5; $i++) {
+        $html .= $i <= $rating
+            ? '<i class="bi bi-star-fill"></i>'
+            : '<i class="bi bi-star-fill empty-star"></i>';
+    }
+
+    return $html;
 }
 
-$hasIsbn = columnExists($koneksi, 'books', 'isbn');
-$hasCreatedAt = columnExists($koneksi, 'books', 'dibuat_pada');
-$hasRataRating = columnExists($koneksi, 'books', 'rata_rating');
+// Proses hapus review saat admin menekan tombol delete.
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    $deleteId = (int)$_GET['id'];
+    $deleteStmt = mysqli_prepare($koneksi, 'DELETE FROM reviews WHERE id_review = ?');
 
-// Mengambil keyword, filter genre, dan halaman aktif dari URL.
+    if ($deleteStmt) {
+        mysqli_stmt_bind_param($deleteStmt, 'i', $deleteId);
+        mysqli_stmt_execute($deleteStmt);
+    }
+
+    header('Location: reviews.php?status=deleted');
+    exit();
+}
+
+// Jika tabel ratings ada, rating diambil dari sana. Jika tidak ada, rating ditampilkan 0.
+$hasRatingsTable = tableExists($koneksi, 'ratings');
+$ratingSelect = $hasRatingsTable ? ', rt.nilai_rating' : ', 0 AS nilai_rating';
+$ratingJoin = $hasRatingsTable ? 'LEFT JOIN ratings rt ON rv.id_user = rt.id_user AND rv.id_buku = rt.id_buku' : '';
+
+// Mengambil keyword pencarian dan halaman aktif dari URL.
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$genreFilter = isset($_GET['genre']) ? trim($_GET['genre']) : '';
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $limit = 5;
+$offset = ($page - 1) * $limit;
 
-$where = [];
-$params = [];
+$where = '';
 $types = '';
+$params = [];
 
-// Filter pencarian buku berdasarkan judul, penulis, dan ISBN jika kolom tersedia.
+// Filter pencarian berdasarkan buku, penulis, user, email, atau isi review.
 if ($search !== '') {
-    if ($hasIsbn) {
-        $where[] = "(judul LIKE ? OR penulis LIKE ? OR isbn LIKE ?)";
-        $like = "%$search%";
-        $params[] = $like;
-        $params[] = $like;
-        $params[] = $like;
-        $types .= 'sss';
-    } else {
-        $where[] = "(judul LIKE ? OR penulis LIKE ?)";
-        $like = "%$search%";
-        $params[] = $like;
-        $params[] = $like;
-        $types .= 'ss';
-    }
+    $where = "WHERE b.judul LIKE ? OR b.penulis LIKE ? OR u.nama LIKE ? OR u.email LIKE ? OR rv.isi_review LIKE ?";
+    $like = "%$search%";
+    $params = [$like, $like, $like, $like, $like];
+    $types = 'sssss';
 }
 
-// Filter genre dari dropdown.
-if ($genreFilter !== '') {
-    $where[] = "genre = ?";
-    $params[] = $genreFilter;
-    $types .= 's';
-}
-
-$whereSql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
-
-// Data ringkasan di bagian atas.
-$totalBooksQuery = mysqli_query($koneksi, 'SELECT COUNT(*) AS total FROM books');
-$totalBooks = (int)(mysqli_fetch_assoc($totalBooksQuery)['total'] ?? 0);
-
-// Menghitung buku yang baru ditambahkan dalam 7 hari terakhir.
-if ($hasCreatedAt) {
-    $recentQuery = mysqli_query($koneksi, 'SELECT COUNT(*) AS total FROM books WHERE dibuat_pada >= DATE_SUB(NOW(), INTERVAL 7 DAY)');
-    $recentAdditions = (int)(mysqli_fetch_assoc($recentQuery)['total'] ?? 0);
-} else {
-    $recentAdditions = 0;
-}
-
-// Mengambil rata-rata rating jika kolom rata_rating tersedia.
-if ($hasRataRating) {
-    $topQuery = mysqli_query($koneksi, 'SELECT AVG(rata_rating) AS top_rated FROM books');
-    $topRated = mysqli_fetch_assoc($topQuery)['top_rated'] ?? 0;
-    $topRated = $topRated ? number_format((float)$topRated, 2) : '0.00';
-} else {
-    $topRated = '0.00';
-}
-
-// Menghitung total buku sesuai filter untuk pagination.
-$countSql = "SELECT COUNT(*) AS total FROM books $whereSql";
+// Menghitung total review untuk kebutuhan teks "Showing..." dan pagination.
+$countSql = "SELECT COUNT(*) AS total
+             FROM reviews rv
+             JOIN books b ON rv.id_buku = b.id_buku
+             JOIN users u ON rv.id_user = u.id_user
+             $where";
 $countStmt = mysqli_prepare($koneksi, $countSql);
 
 if (!$countStmt) {
@@ -128,59 +118,60 @@ if (!$countStmt) {
 bindParams($countStmt, $types, $params);
 mysqli_stmt_execute($countStmt);
 $countResult = mysqli_stmt_get_result($countStmt);
-$totalFiltered = (int)(mysqli_fetch_assoc($countResult)['total'] ?? 0);
-$totalPages = max(1, (int)ceil($totalFiltered / $limit));
+$totalData = (int)(mysqli_fetch_assoc($countResult)['total'] ?? 0);
+$totalPages = max(1, (int)ceil($totalData / $limit));
 
 // Jika halaman di URL melebihi jumlah halaman, kembalikan ke halaman terakhir.
 if ($page > $totalPages) {
     $page = $totalPages;
+    $offset = ($page - 1) * $limit;
 }
 
-$offset = ($page - 1) * $limit;
-$selectColumns = $hasIsbn
-    ? 'id_buku, judul, penulis, genre, cover, isbn'
-    : 'id_buku, judul, penulis, genre, cover';
-
-// Mengambil daftar buku sesuai filter dan halaman aktif.
-$listSql = "SELECT $selectColumns FROM books $whereSql ORDER BY id_buku DESC LIMIT ? OFFSET ?";
+// Mengambil data review lengkap: buku, user, rating, isi review, dan tanggal.
+$listSql = "SELECT rv.id_review, rv.isi_review, rv.tanggal_review,
+                   b.judul, b.penulis, b.cover,
+                   u.nama, u.email
+                   $ratingSelect
+            FROM reviews rv
+            JOIN books b ON rv.id_buku = b.id_buku
+            JOIN users u ON rv.id_user = u.id_user
+            $ratingJoin
+            $where
+            ORDER BY rv.tanggal_review DESC, rv.id_review DESC
+            LIMIT ? OFFSET ?";
 $listStmt = mysqli_prepare($koneksi, $listSql);
 
 if (!$listStmt) {
     die('Prepare list failed: ' . mysqli_error($koneksi));
 }
 
-$listParams = $params;
 $listTypes = $types . 'ii';
+$listParams = $params;
 $listParams[] = $limit;
 $listParams[] = $offset;
 
 bindParams($listStmt, $listTypes, $listParams);
 mysqli_stmt_execute($listStmt);
-$booksResult = mysqli_stmt_get_result($listStmt);
-$currentRows = $booksResult ? mysqli_num_rows($booksResult) : 0;
-$showingStart = $totalFiltered > 0 ? $offset + 1 : 0;
+$reviewsResult = mysqli_stmt_get_result($listStmt);
+$currentRows = $reviewsResult ? mysqli_num_rows($reviewsResult) : 0;
+
+$showingStart = $totalData > 0 ? $offset + 1 : 0;
 $showingEnd = $offset + $currentRows;
 
-$genres = [
-    'Fantasy',
-    'Mystery',
-    'Romance',
-    'Horor',
-    'Thriller',
-    'Sci-Fi',
-    'Self Help',
-    'Business',
-    'Drama',
-    'Family',
-    'Poetry'
-];
+// Membuat URL pagination tanpa menghilangkan keyword pencarian.
+function pageUrl($page, $search) {
+    return 'reviews.php?' . http_build_query([
+        'page' => $page,
+        'search' => $search
+    ]);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Books - BookLens Admin</title>
+    <title>Reviews - BookLens Admin</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -195,7 +186,6 @@ $genres = [
             --page-bg: #eef7fa;
             --footer-bg: #b8d5ec;
             --line: #e2e8f0;
-            --blue: #2563d9;
         }
 
         * {
@@ -312,7 +302,7 @@ $genres = [
             overflow: hidden;
         }
 
-        .books-content {
+        .reviews-content {
             width: 100%;
             max-width: 1046px;
         }
@@ -374,91 +364,32 @@ $genres = [
         }
 
         .page-subtitle {
-            margin: 0 0 30px;
+            margin: 0 0 37px;
             color: #454b55;
             font-size: 15px;
             letter-spacing: .3px;
         }
 
-        .stats-row {
-            margin-bottom: 24px;
-        }
-
-        .stat-card {
-            min-height: 104px;
+        .alert-custom {
             border: 1px solid #d8e0e8;
-            border-radius: 7px;
+            border-radius: 6px;
             background: #ffffff;
-            padding: 18px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            color: #243447;
+            font-size: 13px;
+            margin-bottom: 18px;
         }
 
-        .stat-card p {
-            margin: 0 0 7px;
-            color: #4b5565;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: .8px;
-            text-transform: uppercase;
-        }
-
-        .stat-card h3 {
-            margin: 0;
-            color: var(--navy);
-            font-size: 22px;
-            font-weight: 700;
-        }
-
-        .stat-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 8px;
-            background: #e1f1fb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .stat-icon img {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-        }
-
-        .books-card {
+        .reviews-card {
             overflow: hidden;
             border: 1px solid #d8e0e8;
             border-radius: 7px;
             background: #ffffff;
         }
 
-        .books-toolbar {
+        .reviews-toolbar {
             min-height: 71px;
             padding: 16px 20px;
             border-bottom: 1px solid var(--line);
-            gap: 14px;
-        }
-
-        .add-book-btn {
-            height: 38px;
-            padding: 0 16px;
-            border: 0;
-            border-radius: 4px;
-            background: var(--blue);
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .add-book-btn:hover {
-            background: #1d4fbd;
-            color: #ffffff;
         }
 
         .table-search {
@@ -490,26 +421,14 @@ $genres = [
             padding: 0;
         }
 
-        .genre-select {
-            width: 170px;
-            height: 38px;
-            border: 1px solid #dce3eb;
-            border-radius: 4px;
-            background: #ffffff;
-            color: #4b5565;
-            font-size: 13px;
-            padding: 0 10px;
-            outline: none;
-        }
-
-        .books-table {
+        .reviews-table {
             margin: 0;
-            min-width: 930px;
+            min-width: 1060px;
         }
 
-        .books-table thead th {
+        .reviews-table thead th {
             height: 49px;
-            padding: 0 24px;
+            padding: 0 22px;
             border-bottom: 1px solid var(--line);
             background: #ffffff;
             color: #303946;
@@ -518,97 +437,113 @@ $genres = [
             vertical-align: middle;
         }
 
-        .books-table tbody td {
-            height: 82px;
-            padding: 12px 24px;
+        .reviews-table tbody td {
+            height: 86px;
+            padding: 12px 22px;
             border-bottom: 1px solid var(--line);
             color: #465166;
             font-size: 13px;
             vertical-align: middle;
         }
 
-        .books-table tbody tr:last-child td {
+        .reviews-table tbody tr:last-child td {
             border-bottom: 0;
         }
 
-        .book-cell {
+        .book-cell,
+        .user-cell {
             gap: 14px;
         }
 
         .cover-img {
-            width: 38px;
-            height: 56px;
+            width: 30px;
+            height: 44px;
             border: 1px solid #d8e1e8;
             border-radius: 2px;
             object-fit: cover;
             flex-shrink: 0;
         }
 
-        .book-title {
-            margin: 0 0 3px;
+        .book-title,
+        .user-name {
+            margin-bottom: 3px;
             color: var(--navy);
             font-size: 13px;
             font-weight: 700;
-            line-height: 1.25;
+            line-height: 1.2;
         }
 
-        .book-author {
+        .book-author,
+        .user-email {
             margin: 0;
             color: #5b6575;
             font-size: 12px;
             line-height: 1.3;
         }
 
-        .genre-badge {
+        .avatar-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             display: inline-flex;
             align-items: center;
-            min-height: 25px;
-            padding: 4px 10px;
-            border-radius: 4px;
-            background: #edf2f4;
-            color: #526a79;
-            font-size: 12px;
-            font-weight: 600;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 18px;
         }
 
-        .isbn-text {
-            color: #5b6575;
+        .avatar-blue {
+            background: #dff0ff;
+            color: #1683df;
+        }
+
+        .avatar-green {
+            background: #daf4e4;
+            color: #17a45b;
+        }
+
+        .avatar-purple {
+            background: #eadcff;
+            color: #7c3fec;
+        }
+
+        .avatar-yellow {
+            background: #fff1d1;
+            color: #f4a408;
+        }
+
+        .rating-stars {
+            color: #f5b301;
+            font-size: 15px;
+            letter-spacing: 1px;
             white-space: nowrap;
         }
 
-        .action-group {
-            gap: 8px;
+        .empty-star {
+            color: #cbd5e1;
         }
 
-        .action-btn {
+        .review-text {
+            max-width: 230px;
+            margin: 0;
+            color: #313b4d;
+            line-height: 1.55;
+        }
+
+        .delete-review-btn {
             width: 34px;
             height: 34px;
+            border: 1px solid #ffd5d5;
             border-radius: 6px;
+            background: #fff5f5;
+            color: #d10000;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 15px;
         }
 
-        .edit-btn {
-            border: 1px solid #d8e3ef;
-            background: #f7fbff;
-            color: #395a7d;
-        }
-
-        .edit-btn:hover {
-            background: var(--navy);
-            border-color: var(--navy);
-            color: #ffffff;
-        }
-
-        .delete-btn {
-            border: 1px solid #ffd5d5;
-            background: #fff5f5;
-            color: #d10000;
-        }
-
-        .delete-btn:hover {
+        .delete-review-btn:hover {
             background: #d10000;
             border-color: #d10000;
             color: #ffffff;
@@ -634,8 +569,7 @@ $genres = [
             gap: 6px;
         }
 
-        .pagination-box a,
-        .pagination-box span {
+        .pagination-box a {
             min-width: 30px;
             height: 28px;
             border: 1px solid #d5dde7;
@@ -709,15 +643,14 @@ $genres = [
         }
 
         @media (max-width: 767.98px) {
-            .books-toolbar,
+            .reviews-toolbar,
             .table-footer,
             .main-footer {
                 flex-direction: column;
                 align-items: flex-start !important;
             }
 
-            .table-search,
-            .genre-select {
+            .table-search {
                 width: 100%;
                 margin-left: 0;
             }
@@ -752,12 +685,12 @@ $genres = [
                         <span>Dashboard</span>
                     </a>
 
-                    <a href="books.php" class="active d-flex align-items-center">
+                    <a href="books.php" class="d-flex align-items-center">
                         <img src="../assets/images/ui/icon-books.png" alt="Books" class="menu-icon">
                         <span>Books</span>
                     </a>
 
-                    <a href="reviews.php" class="d-flex align-items-center">
+                    <a href="reviews.php" class="active d-flex align-items-center">
                         <img src="../assets/images/ui/icon-review.png" alt="Reviews" class="menu-icon">
                         <span>Reviews</span>
                     </a>
@@ -775,13 +708,12 @@ $genres = [
             </aside>
 
             <main class="main-content flex-grow-1">
-                <div class="books-content">
+                <div class="reviews-content">
                     <!-- Search bar bagian atas halaman -->
-                    <form method="GET" action="books.php" class="top-bar d-flex align-items-center">
+                    <form method="GET" action="reviews.php" class="top-bar d-flex align-items-center">
                         <div class="input-group search-group flex-grow-1">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" name="search" class="form-control" placeholder="Search for books, authors, or users..." value="<?php echo safeText($search); ?>" aria-label="Search">
-                            <input type="hidden" name="genre" value="<?php echo safeText($genreFilter); ?>">
                         </div>
 
                         <div class="notif-box">
@@ -789,126 +721,100 @@ $genres = [
                         </div>
                     </form>
 
-                    <h1 class="page-title">Books</h1>
-                    <p class="page-subtitle">Manage all books available in BookLens.</p>
+                    <h1 class="page-title">Reviews</h1>
+                    <p class="page-subtitle">Manage all book reviews in BookLens.</p>
 
-                    <!-- Kartu ringkasan jumlah buku, buku terbaru, dan rating -->
-                    <section class="row g-3 stats-row">
-                        <div class="col-12 col-md-4">
-                            <div class="stat-card">
-                                <div>
-                                    <p>Total Books</p>
-                                    <h3><?php echo number_format($totalBooks); ?></h3>
-                                </div>
-                                <div class="stat-icon">
-                                    <img src="../assets/images/ui/icon-total books.png" alt="Total Books">
-                                </div>
-                            </div>
+                    <!-- Pesan setelah review berhasil dihapus -->
+                    <?php if (isset($_GET['status']) && $_GET['status'] === 'deleted'): ?>
+                        <div class="alert alert-custom alert-dismissible fade show" role="alert">
+                            Review berhasil dihapus.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
+                    <?php endif; ?>
 
-                        <div class="col-12 col-md-4">
-                            <div class="stat-card">
-                                <div>
-                                    <p>Recent Additions</p>
-                                    <h3><?php echo number_format($recentAdditions); ?></h3>
-                                </div>
-                                <div class="stat-icon">
-                                    <img src="../assets/images/ui/icon-total reviews.png" alt="Recent Additions">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-4">
-                            <div class="stat-card">
-                                <div>
-                                    <p>Top Rated</p>
-                                    <h3><?php echo safeText($topRated); ?></h3>
-                                </div>
-                                <div class="stat-icon">
-                                    <img src="../assets/images/ui/icon- avg rating.png" alt="Top Rated">
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="books-card">
-                        <!-- Toolbar tabel: tombol tambah buku, pencarian, dan filter genre -->
-                        <form method="GET" action="books.php" class="books-toolbar d-flex align-items-center">
-                            <a href="add_book.php" class="add-book-btn">
-                                <i class="bi bi-plus-lg"></i>
-                                <span>Add Book</span>
-                            </a>
-
-                            <div class="table-search">
-                                <input type="text" name="search" placeholder="Search book..." value="<?php echo safeText($search); ?>" aria-label="Search book">
+                    <section class="reviews-card">
+                        <!-- Search khusus untuk tabel review -->
+                        <div class="reviews-toolbar d-flex align-items-center">
+                            <form method="GET" action="reviews.php" class="table-search">
+                                <input type="text" name="search" placeholder="Search review..." value="<?php echo safeText($search); ?>" aria-label="Search review">
                                 <button type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
-                            </div>
-
-                            <select name="genre" class="genre-select" onchange="this.form.submit()" aria-label="Filter genre">
-                                <option value="">All Genres</option>
-                                <?php foreach ($genres as $genre): ?>
-                                    <option value="<?php echo safeText($genre); ?>" <?php echo $genreFilter === $genre ? 'selected' : ''; ?>>
-                                        <?php echo safeText($genre); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </form>
+                            </form>
+                        </div>
 
                         <div class="table-responsive">
-                            <!-- Tabel daftar buku dan aksi edit/hapus -->
-                            <table class="table books-table align-middle">
+                            <!-- Tabel daftar review dan aksi hapus -->
+                            <table class="table reviews-table align-middle">
                                 <thead>
                                     <tr>
-                                        <th style="width: 9%;">No</th>
-                                        <th style="width: 34%;">Book</th>
-                                        <th style="width: 17%;">Genre</th>
-                                        <th style="width: 23%;">ISBN</th>
-                                        <th style="width: 17%;" class="text-center">Actions</th>
+                                        <th style="width: 7%;">No</th>
+                                        <th style="width: 21%;">Book</th>
+                                        <th style="width: 23%;">User</th>
+                                        <th style="width: 15%;">Rating</th>
+                                        <th style="width: 22%;">Review</th>
+                                        <th style="width: 12%;">Date</th>
+                                        <th style="width: 7%;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if ($booksResult && $currentRows > 0): ?>
+                                    <?php if ($reviewsResult && $currentRows > 0): ?>
                                         <?php $rowNumber = $offset + 1; ?>
-                                        <?php while ($book = mysqli_fetch_assoc($booksResult)): ?>
+                                        <?php $avatarIndex = 0; ?>
+                                        <?php while ($review = mysqli_fetch_assoc($reviewsResult)): ?>
+                                            <?php
+                                            // Format tanggal review agar tampil seperti "30 Nov 2024".
+                                            $timestamp = !empty($review['tanggal_review']) ? strtotime($review['tanggal_review']) : false;
+                                            $reviewDate = $timestamp ? date('d M Y', $timestamp) : '-';
+                                            ?>
                                             <tr>
                                                 <td><?php echo $rowNumber++; ?></td>
                                                 <td>
-                                                    <!-- Cover, judul, dan penulis buku -->
+                                                    <!-- Informasi buku yang direview -->
                                                     <div class="book-cell d-flex align-items-center">
-                                                        <img src="<?php echo safeText(coverPath($book['cover'] ?? '')); ?>" class="cover-img" alt="Cover">
+                                                        <img src="<?php echo safeText(coverPath($review['cover'] ?? '')); ?>" alt="Book Cover" class="cover-img">
                                                         <div>
-                                                            <h4 class="book-title"><?php echo safeText($book['judul'] ?? '-'); ?></h4>
-                                                            <p class="book-author"><?php echo safeText($book['penulis'] ?? '-'); ?></p>
+                                                            <h4 class="book-title"><?php echo safeText($review['judul']); ?></h4>
+                                                            <p class="book-author"><?php echo safeText($review['penulis']); ?></p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <!-- Genre buku ditampilkan sebagai badge kecil -->
-                                                    <span class="genre-badge"><?php echo safeText($book['genre'] ?? '-'); ?></span>
+                                                    <!-- Informasi user yang menulis review -->
+                                                    <div class="user-cell d-flex align-items-center">
+                                                        <span class="avatar-circle <?php echo avatarClass($avatarIndex++); ?>">
+                                                            <i class="bi bi-person"></i>
+                                                        </span>
+                                                        <div>
+                                                            <h4 class="user-name"><?php echo safeText($review['nama']); ?></h4>
+                                                            <p class="user-email"><?php echo safeText($review['email']); ?></p>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td>
-                                                    <!-- ISBN bisa kosong jika database tidak punya kolom ISBN atau datanya belum diisi -->
-                                                    <span class="isbn-text">
-                                                        <?php echo $hasIsbn && !empty($book['isbn']) ? safeText($book['isbn']) : '-'; ?>
+                                                    <!-- Rating ditampilkan sebagai lima bintang -->
+                                                    <span class="rating-stars">
+                                                        <?php echo renderStars($review['nilai_rating'] ?? 0); ?>
                                                     </span>
                                                 </td>
+                                                <td>
+                                                    <p class="review-text"><?php echo safeText($review['isi_review']); ?></p>
+                                                </td>
+                                                <td><?php echo safeText($reviewDate); ?></td>
                                                 <td class="text-center">
-                                                    <!-- Aksi admin untuk mengedit atau menghapus buku -->
-                                                    <div class="action-group d-inline-flex align-items-center">
-                                                        <a href="edit_book.php?id=<?php echo (int)$book['id_buku']; ?>" class="action-btn edit-btn" title="Edit Book">
-                                                            <i class="bi bi-pencil-fill"></i>
-                                                        </a>
-
-                                                        <a href="delete_book.php?id=<?php echo (int)$book['id_buku']; ?>" class="action-btn delete-btn" title="Delete Book" onclick="return confirm('Yakin ingin menghapus buku ini?')">
-                                                            <i class="bi bi-trash3"></i>
-                                                        </a>
-                                                    </div>
+                                                    <!-- Tombol hapus review -->
+                                                    <a
+                                                        href="reviews.php?action=delete&id=<?php echo (int)$review['id_review']; ?>"
+                                                        class="delete-review-btn"
+                                                        title="Delete Review"
+                                                        onclick="return confirm('Yakin ingin menghapus review ini?')"
+                                                    >
+                                                        <i class="bi bi-trash3"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         <?php endwhile; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="5" class="empty-data">Belum ada data buku.</td>
+                                            <td colspan="7" class="empty-data">No review entries found.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
@@ -918,21 +824,21 @@ $genres = [
                         <!-- Footer tabel: jumlah data tampil dan pagination -->
                         <div class="table-footer d-flex align-items-center justify-content-center">
                             <span>
-                                Showing <?php echo $showingStart; ?> to <?php echo $showingEnd; ?> of <?php echo $totalFiltered; ?> entries
+                                Showing <?php echo $showingStart; ?> to <?php echo $showingEnd; ?> of <?php echo $totalData; ?> entries
                             </span>
 
                             <?php if ($totalPages > 1): ?>
                                 <div class="pagination-box d-flex align-items-center">
                                     <?php if ($page > 1): ?>
-                                        <a href="<?php echo pageUrl($page - 1, $search, $genreFilter); ?>" aria-label="Previous"><i class="bi bi-chevron-left"></i></a>
+                                        <a href="<?php echo pageUrl($page - 1, $search); ?>" aria-label="Previous"><i class="bi bi-chevron-left"></i></a>
                                     <?php endif; ?>
 
                                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                        <a href="<?php echo pageUrl($i, $search, $genreFilter); ?>" class="<?php echo $i === $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                                        <a href="<?php echo pageUrl($i, $search); ?>" class="<?php echo $i === $page ? 'active' : ''; ?>"><?php echo $i; ?></a>
                                     <?php endfor; ?>
 
                                     <?php if ($page < $totalPages): ?>
-                                        <a href="<?php echo pageUrl($page + 1, $search, $genreFilter); ?>" aria-label="Next"><i class="bi bi-chevron-right"></i></a>
+                                        <a href="<?php echo pageUrl($page + 1, $search); ?>" aria-label="Next"><i class="bi bi-chevron-right"></i></a>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>

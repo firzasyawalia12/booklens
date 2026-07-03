@@ -2,7 +2,6 @@
 session_start();
 include '../koneksi.php';
 
-
 if (!isset($_SESSION['id_user']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: ../login.php');
     exit();
@@ -613,12 +612,12 @@ $jumlah_buku_terbaru = $buku_terbaru_result ? mysqli_num_rows($buku_terbaru_resu
                         <span>Books</span>
                     </a>
 
-                    <a href="#" class="d-flex align-items-center">
+                    <a href="reviews.php" class="d-flex align-items-center">
                         <img src="../assets/images/ui/icon-review.png" alt="Reviews" class="menu-icon">
                         <span>Reviews</span>
                     </a>
 
-                    <a href="#" class="d-flex align-items-center">
+                    <a href="users.php" class="d-flex align-items-center">
                         <img src="../assets/images/ui/icon-user.png" alt="Users" class="menu-icon">
                         <span>Users</span>
                     </a>
