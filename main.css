@@ -80,7 +80,7 @@ body {
 
 .brand-text {
   font-size: 1.3rem;
-  font-weight: 700; /* Membuat tulisan BookLens menjadi tebal */
+  font-weight: 500; /* Membuat tulisan BookLens menjadi tebal */
   color: #0f172a; /* Warna navy gelap/hitam sesuai tema figma */
   font-family: "Poppins", sans-serif;
 }

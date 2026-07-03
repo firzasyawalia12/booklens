@@ -71,9 +71,8 @@ $total_wishlist = count($wishlist_items);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="main.css">
     <style>
-        body { margin: 0; font-family: 'Inter', sans-serif; background-color: #ebf3f9; color: #1e293b; }
+        body { margin: 0; font-family: 'Poppins', sans-serif; background-color: #ebf3f9; color: #1e293b; }
         
-        /* Taruh ini di dalam tag <style> pada file wishlist.php */
         body {
             display: flex;
             flex-direction: column;
@@ -89,14 +88,32 @@ $total_wishlist = count($wishlist_items);
             margin-top: auto;
         }
         /* STYLE NAVBAR */
-        .navbar { 
-            display: flex; 
-            align-items: center; 
-            background: #ffffff; 
-            padding: 16px 40px; 
-            border-bottom: 1px solid #e2e8f0; 
-            box-sizing: border-box; 
-            width: 100%; 
+        .nav-right-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .nav-search-wrapper {
+            position: relative;
+            background-color: #f1f5f9;
+            border-radius: 20px;
+            padding: 6px 12px 6px 32px;
+            display: flex;
+            align-items: center;
+        }
+        .nav-search-wrapper .nav-search-icon {
+            position: absolute;
+            left: 12px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        .nav-search-wrapper input {
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 12px;
+            width: 160px;
+            font-family: 'Poppins', sans-serif;
         }
         .logo-brand .brand-link { 
             display: flex; 
@@ -152,17 +169,21 @@ $total_wishlist = count($wishlist_items);
             <span class="brand-text">BookLens</span>
         </a>
     </div>
-    
+
     <div class="nav-links">
-        <a href="home.php">Home</a> 
+        <a href="home.php">Home</a>
         <a href="books_user.php">Books</a>
         <a href="wishlist.php" class="active">My wishlist</a>
-        <a href="reviews.php">My Review</a>
+        <a href="MyReview.php">My Review</a>
     </div>
-    
+
     <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">
-        <a href="logout.php" class="profile-btn-link" title="Logout">
-            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #1e293b;">
+        <div class="nav-search-wrapper" style="position: relative;">
+            <i class="fa-solid fa-magnifying-glass nav-search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+            <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 200px;">
+        </div>
+        <a href="logout.php" class="profile-btn-link" title="Logout" style="color: #1e293b; font-size: 1.2rem;">
+            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center;">
                 <i class="fa-regular fa-user"></i>
             </div>
         </a>

@@ -25,15 +25,16 @@ if (!isset($_SESSION['username'])) {
     
     <link rel="stylesheet" href="main.css">
     <style>
-        .book-item-card {
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .book-item-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        body { margin: 0; font-family: 'Poppins', sans-serif; background-color: #ebf3f9; color: #1e293b; }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
         }
 
+        /* STYLE NAVBAR */
         .nav-right-container {
             display: flex;
             align-items: center;
@@ -61,27 +62,21 @@ if (!isset($_SESSION['username'])) {
             width: 160px;
             font-family: 'Poppins', sans-serif;
         }
-        .profile-btn-link {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
+        .logo-brand .brand-link { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            text-decoration: none; 
+            color: #0f172a; 
+            font-size: 1.4rem; 
+            font-weight: 700; 
         }
-        .profile-avatar-circle {
-            width: 32px;
-            height: 32px;
-            background-color: #1a253c;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: 14px;
-            transition: background-color 0.2s;
-        }
-        .profile-avatar-circle:hover {
-            background-color: #243556;
-        }
+        .logo-brand .brand-link img { width: 28px; height: 28px; object-fit: contain; }
+        
+        .nav-links { display: flex; gap: 24px; margin-left: 48px; margin-right: auto; }
+        .nav-links a { text-decoration: none; color: #475569; font-weight: 500; font-size: 0.95rem; }
+        .nav-links a:hover { color: #0f172a; }
+        .nav-links a.active { color: #0f172a; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -95,10 +90,9 @@ if (!isset($_SESSION['username'])) {
 
     <div class="nav-links">
         <a href="home.php" class="active">Home</a>
-
         <a href="books_user.php">Books</a>
-        <a href="#">My wishlist</a>
-        <a href="#">My Review</a>
+        <a href="wishlist.php">My wishlist</a>
+        <a href="MyReview.php">My Review</a>
     </div>
 
     <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">

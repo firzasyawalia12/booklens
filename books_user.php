@@ -115,8 +115,46 @@ foreach ($books_collection as $item) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Explore Books - BookLens</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./main.css">
+    <link rel="stylesheet" href="main.css">
     <style>
+        .nav-right-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .nav-search-wrapper {
+            position: relative;
+            background-color: #f1f5f9;
+            border-radius: 20px;
+            padding: 6px 12px 6px 32px;
+            display: flex;
+            align-items: center;
+        }
+        .nav-search-wrapper .nav-search-icon {
+            position: absolute;
+            left: 12px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        .nav-search-wrapper input {
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 12px;
+            width: 160px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .logo-brand .brand-link { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            text-decoration: none; 
+            color: #0f172a; 
+            font-size: 1.4rem; 
+            font-weight: 700; 
+        }
+        .logo-brand .brand-link img { width: 28px; height: 28px; object-fit: contain; }
+
         #filterAndSearchForm {
             width: 100%;
             display: contents;
@@ -167,6 +205,10 @@ foreach ($books_collection as $item) {
             border-color: #94a3b8;
             color: #0f172a;
         }
+        .nav-links { display: flex; gap: 24px; margin-left: 48px; margin-right: auto; }
+        .nav-links a { text-decoration: none; color: #475569; font-weight: 500; font-size: 0.95rem; }
+        .nav-links a:hover { color: #0f172a; }
+        .nav-links a.active { color: #0f172a; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -178,15 +220,21 @@ foreach ($books_collection as $item) {
             <span class="brand-text">BookLens</span>
         </a>
     </div>
+
     <div class="nav-links">
         <a href="home.php">Home</a>
         <a href="books_user.php" class="active">Books</a>
         <a href="wishlist.php">My wishlist</a>
-        <a href="reviews.php">My Review</a>
+        <a href="MyReview.php">My Review</a>
     </div>
+
     <div class="nav-right-container" style="display: flex; align-items: center; gap: 20px;">
-        <a href="logout.php" class="profile-btn-link" title="Logout">
-            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #1e293b;">
+        <div class="nav-search-wrapper" style="position: relative;">
+            <i class="fa-solid fa-magnifying-glass nav-search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
+            <input type="text" placeholder="Search for titles, author..." style="padding: 6px 12px 6px 35px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.8rem; outline: none; width: 200px;">
+        </div>
+        <a href="logout.php" class="profile-btn-link" title="Logout" style="color: #1e293b; font-size: 1.2rem;">
+            <div class="profile-avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center;">
                 <i class="fa-regular fa-user"></i>
             </div>
         </a>
