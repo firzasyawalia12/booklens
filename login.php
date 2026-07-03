@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             u.password,
             r.nama_role AS role
         FROM users u
-        JOIN role r ON u.id_role = r.id_role
+        JOIN mst_role r ON u.id_role = r.id_role
         WHERE u.email = ?
         LIMIT 1
     ";

@@ -88,7 +88,7 @@ $total_users_raw = getSingleValue(
     "
     SELECT COUNT(*) AS total
     FROM users u
-    JOIN mst_role r ON u.id_role = r.id_role
+    JOIN role r ON u.id_role = r.id_role
     WHERE r.nama_role = 'user'
     ",
     'total',
