@@ -263,14 +263,13 @@ foreach ($books_collection as $item) {
                                         <span class="tag"><?php echo $g; ?></span>
                                     <?php endforeach; ?>
                                 </div>
-                                <h4><?php echo $item['title']; ?></h4>
-                                <p class="author-name"><?php echo $item['author']; ?></p>
+                                <h4><?php echo htmlspecialchars($item['title']); ?></h4>
+                                <p class="author-name"><?php echo htmlspecialchars($item['author']); ?></p>
                                 
                                 <div class="card-action-group">
-                                    <!-- DIUBAH KE detail_books.php Sesuai image_e8ec52.png -->
                                     <button type="button" class="btn-detail" onclick="window.location.href='detail_books.php?id=<?php echo $item['id']; ?>'">Detail</button>
                                     
-                                    <button type="button" class="btn-card-wishlist" onclick="tambahKeWishlist(<?php echo $item['id']; ?>)" title="Add to Wishlist">
+                                    <button type="button" class="btn-card-wishlist" onclick="tambahKeWishlist(<?php echo $item['id']; ?>, '<?php echo urlencode($item['title']); ?>', '<?php echo urlencode($item['author']); ?>', '<?php echo urlencode($item['cover']); ?>')" title="Add to Wishlist">
                                         <i class="fa-regular fa-bookmark"></i>
                                     </button>
                                 </div>
@@ -329,8 +328,11 @@ function tungguKetikPencarian() {
     }, 600);
 }
 
-function tambahKeWishlist(idBuku) {
-    alert("Sukses! Buku dengan ID " + idBuku + " dimasukkan ke Wishlist.");
+// LOGIKA JAVASCRIPT YANG TELAH DIPERBAIKI UNTUK MENGIRIM DATA KE WISHLIST.PHP
+function tambahKeWishlist(idBuku, judul, penulis, cover) {
+    alert("Sukses! Buku dimasukkan ke Wishlist.");
+    // Secara otomatis mengalihkan browser dengan membawa query parameter ter-encode
+    window.location.href = "wishlist.php?action=add&id=" + idBuku + "&title=" + judul + "&author=" + penulis + "&cover=" + cover;
 }
 </script>
 
